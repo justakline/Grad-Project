@@ -2,7 +2,64 @@
 
 
 
-## Getting started
+## Introduction
+
+This is my graduate project for my Master's degree at Towson University. 
+
+
+### Context
+Modern traffic simulations often treat individual drivers and vehicles as a monolith, overlooking rich variation in driving styles that can lead to congestion. This project proposes an agent-based simulation that explicitly encodes different driving personalities to investigate how they shape localized traffic patterns. 
+
+
+### Problem Statement
+The lack of nuance given to traffic simulations causes inadequate road designs for proposed projects, leading to increases in vehicle-related problems such as traffic wait times, car crashes, and environmental impact, and these findings need to be quantified. 
+
+
+## Approach
+This project will implement a Java-based agent-oriented approach. Each vehicle will act as its own autonomous object and be given a “personality”. The personality profile will have various levels of acceleration aggressiveness, lane-change frequency, desired follow distance, risk tolerance, etc. Simulations will be created based on generated scenarios with adjustable traffic densities, road lanes, personality mixes, etc. Time series data will be recorded, and throughput, average speed, and other key indicators will be measured.  
+
+## Topics Studied
+1. Agent-based design- Understanding the different architectures, types of behaviors, how decisions are made, etc. 
+
+2. Traffic simulation design- Learning the fundamentals of what is needed to create a traffic simulation, such as how to design roads and lane changes. 
+
+3. Simulation Frameworks- The diverse ways to build a simulation and apply the learning to this project. 
+
+4. Data collection design- How to set up logging of different states within the simulation, and how to store that information efficiently and in a way that aids quick analysis. 
+
+5. Designing efficient programs - Given that simulations tend to be resource-intensive, any design change that can increase efficiency will help. 
+
+
+## Project Objectives
+1. Mastering traffic flow theory- Understand the fundamentals of traffic flow that are accepted by traffic engineers. 
+
+2. Applying agent-based modeling techniques- Design autonomous driving agents who can simulate real-world drivers and model traffic dynamics. 
+
+3. Utilize object-oriented design patterns- Build a maintainable and extendable Java codebase. 
+
+4. Enhance data analysis proficiency-Transform raw data into meaningful plots and explanations using EDA, classification, regression, and/or clustering. 
+
+5. Practice professional software development- utilize issue tracking and branching using GitHub. 
+
+## Deliverables
+
+| Deliverable | Description |
+|-|-|
+| Source Code Repository | Well-maintained java project hosted on GitHub |
+|Project Requirements Document |Detailed specification of functional requirements that should be achieved | 
+|Process Diagrams |Visual representation of key events and the flow of specific processes |
+|Class Diagrams |The attributes and functionality of each class created with this project |
+|Database Schema  |A relational diagram with tables, fields, constraints, key, foreign key, etc. |
+|Database Creation Script |Automatically generated script to create the database on a separate server, including both schema and data objects 
+|Simulation Executable |An executable to start the simulation, works in tandem with the database creation script |
+|Statistical Analysis Report |Report after analysis was performed on the resulting dataset. |
+|User Manual |An explanation of how to use the User Interface  |
+|Final Project Report |Comprehensive write-up that combines all aforementioned deliverables with discussion, backup methodology, results, future work, references, etc. |
+
+
+
+
+
 
 To make it easy for you to get started with GitLab, here's a list of recommended next steps.
 
@@ -19,75 +76,3 @@ git remote add origin https://gitlab.com/justakline/agent-based-traffic-simulati
 git branch -M main
 git push -uf origin main
 ```
-
-## Integrate with your tools
-
-- [ ] [Set up project integrations](https://gitlab.com/justakline/agent-based-traffic-simulation/-/settings/integrations)
-
-## Collaborate with your team
-
-- [ ] [Invite team members and collaborators](https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Set auto-merge](https://docs.gitlab.com/user/project/merge_requests/auto_merge/)
-
-## Test and Deploy
-
-Use the built-in continuous integration in GitLab.
-
-- [ ] [Get started with GitLab CI/CD](https://docs.gitlab.com/ee/ci/quick_start/)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing (SAST)](https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
-
-***
-
-# Editing this README
-
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!). Thanks to [makeareadme.com](https://www.makeareadme.com/) for this template.
-
-## Suggestions for a good README
-
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
-
-## Name
-Choose a self-explaining name for your project.
-
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
-
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
-
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
-
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
