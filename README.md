@@ -43,16 +43,16 @@ This project will implement a Java-based agent-oriented approach. Each vehicle w
 
 ## Deliverables
 
-| Deliverable | Description |
-|-|-|
-| Source Code Repository | Well-maintained java project hosted on GitHub |
-|Project Requirements Document |Detailed specification of functional requirements that should be achieved | 
-|Process Diagrams |Visual representation of key events and the flow of specific processes |
-|Class Diagrams |The attributes and functionality of each class created with this project |
-|Database Schema  |A relational diagram with tables, fields, constraints, key, foreign key, etc. |
-|Database Creation Script |Automatically generated script to create the database on a separate server, including both schema and data objects 
-|Simulation Executable |An executable to start the simulation, works in tandem with the database creation script |
-|Statistical Analysis Report |Report after analysis was performed on the resulting dataset. |
-|User Manual |An explanation of how to use the User Interface  |
-|Final Project Report |Comprehensive write-up that combines all aforementioned deliverables with discussion, backup methodology, results, future work, references, etc. |
+| Status | Deliverable | Description |
+|-|-|-|
+|&#x2610; | Source Code Repository | Well-maintained java project hosted on GitHub |
+|&#x2610;|Project Requirements Document |Detailed specification of functional requirements that should be achieved | 
+|&#x2610;|Process Diagrams |Visual representation of key events and the flow of specific processes |
+|&#x2610;|Class Diagrams |The attributes and functionality of each class created with this project |
+|&#x2610;|Database Schema  |A relational diagram with tables, fields, constraints, key, foreign key, etc. |
+|&#x2610;|Database Creation Script |Automatically generated script to create the database on a separate server, including both schema and data objects 
+|&#x2610;|Simulation Executable |An executable to start the simulation, works in tandem with the database creation script |
+|&#x2610;|Statistical Analysis Report |Report after analysis was performed on the resulting dataset. |
+|&#x2610;|User Manual |An explanation of how to use the User Interface  |
+|&#x2610;|Final Project Report |Comprehensive write-up that combines all aforementioned deliverables with discussion, backup methodology, results, future work, references, etc. |
 
