@@ -1,0 +1,14 @@
+
+
+from mesa import Model, AgentSet
+
+class TrafficModel(Model):
+
+
+    def __init__():
+        # Call the parent constructor
+        # # super.__init__(args)
+
+        self.dt = dt
+        self.agentSet = AgentSet("""Whatever args go here""")
+        
