@@ -1,3 +1,4 @@
 
 
-class Highway(ContinousSpace)
+class Highway(ContinousSpace):
+    pass
