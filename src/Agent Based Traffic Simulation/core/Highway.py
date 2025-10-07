@@ -1,3 +1,5 @@
 
+from mesa.space import ContinuousSpace
 
-class Highway(ContinousSpace)
+class Highway(ContinuousSpace):
+    pass

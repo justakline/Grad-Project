@@ -2,10 +2,11 @@
 
 from mesa import Model, AgentSet
 
+
 class TrafficModel(Model):
 
-
-    def __init__():
+    dt: float
+    def __init__(self, dt ):
         # Call the parent constructor
         # # super.__init__(args)
 

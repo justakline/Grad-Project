@@ -56,3 +56,11 @@ This project will implement a Java-based agent-oriented approach. Each vehicle w
 |&#x2610;|User Manual |An explanation of how to use the User Interface  |
 |&#x2610;|Final Project Report |Comprehensive write-up that combines all aforementioned deliverables with discussion, backup methodology, results, future work, references, etc. |
 
+
+
+## Project Dependencies thus far
+mesa>=3.0.0 - Agent-based modeling framework
+pygame>=2.5.0 - Original visualization (not used in web version)
+numpy>=1.24.0 - Numerical computations
+flask>=3.0.0 - Web server
+flask-cors>=6.0.0 - Cross-origin resource sharing
