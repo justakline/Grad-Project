@@ -1,11 +1,9 @@
 import numpy as np
 
 class Lane:
-    startPosition: np.array
-    endPosition:np.array 
-    laneWidth: float 
 
-    def __init__(self, startPosition: np.array, endPosition:np.array, laneWidth: float) -> None: 
-        self.startPosition = startPosition
-        self.endPosition = endPosition
-        self.laneWidth = laneWidth
+    # All units will be in millimeters
+    def __init__(self, start_position: np.array, end_position:np.array, lane_width: int):
+        self.start_position:np.array = start_position
+        self.end_position:np.array = end_position
+        self.lane_width:int = lane_width

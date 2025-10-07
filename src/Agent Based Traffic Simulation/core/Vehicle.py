@@ -3,16 +3,20 @@ import numpy as np
 
 class Vehicle:
 
-    position: np.array
-    velocity: np.array
-    acceleration: np.array
-    length:float
-    width:float
-
+    # Distance will use floats because mm/ms does not have enough precision... 2mi/hour = 1mm/s
     def __init__(self, position:np.array, length:float, width: float ):
-        self.position = position
-        self.length = length
-        self.width = width
-        self.velocity = np.array([0,0])
-        self.acceleration = np.array([0,0])
+        self.position:np.array = position
+        self.length:float = length
+        self.width:float = width
+        self.velocity:np.array = np.array([0,0])
+        self.acceleration :np.array= np.array([0,0])
 
+
+    def changeAcceleration(self, change_amount: np.array):
+        self.acceleration = np.add(self.acceleration, change_amount)
+
+    def changeVelocity(self, change_amount: np.array):
+        self.velocity = np.add(self.velocity, change_amount)
+
+    def changePosition(self, change_amount: np.array):
+        self.position = np.add(self.position, change_amount)
