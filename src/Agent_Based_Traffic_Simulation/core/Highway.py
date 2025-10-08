@@ -1,6 +1,6 @@
 
 from mesa.space import ContinuousSpace
-from Lane import Lane
+from .Lane import Lane
 import numpy as np
 
 

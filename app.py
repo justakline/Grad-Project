@@ -24,8 +24,8 @@ def init_simulation(sim_type):
     
     try:
         if sim_type == 'traffic':
-            from TrafficModel import TrafficModel
-            from Highway import Highway
+            from src.Agent_Based_Traffic_Simulation.core.TrafficModel import TrafficModel
+            from src.Agent_Based_Traffic_Simulation.core.Highway import Highway
             
             highway = Highway(20_000, 100_000, False, 4, 3657)
             simulation_model = TrafficModel(50, 1, highway)
@@ -38,7 +38,7 @@ def init_simulation(sim_type):
             })
             
         elif sim_type == 'demo':
-            from MyModel import MyModel
+            from src.Agent_Based_Traffic_Simulation.demo.MyModel import MyModel
             
             simulation_model = MyModel(n_agents=100)
             simulation_type = 'demo'
@@ -50,8 +50,10 @@ def init_simulation(sim_type):
             })
         else:
             return jsonify({'status': 'error', 'message': 'Invalid simulation type'}), 400
-            
+                
     except Exception as e:
+
+        print(e.with_traceback())
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/step')

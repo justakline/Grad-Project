@@ -3,12 +3,21 @@ import random
 
 import mesa
 import numpy as np
+import copy
 
 from mesa import Model, Agent
 from mesa.space import ContinuousSpace
 
-import TrafficModel
-from Vehicle import Vehicle
+from . import TrafficModel
+from .Vehicle import Vehicle
+
+
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+        
+    from .DriveStrategies.DriveStrategy import DriveStrategy
+    from .DriveStrategies.CruiseStrategy import CruiseStrategy
+    from .DriveStrategies.AccelerateStrategy import AccelerateStrategy
 
 class TrafficAgent(Agent):
     model: TrafficModel
@@ -21,11 +30,11 @@ class TrafficAgent(Agent):
 
         direction: np.array = np.subtract(model.highway.lanes[lane_intent].end_position,model.highway.lanes[lane_intent].start_position)
         acceleration = direction/np.linalg.norm(direction) * random.uniform(0.5,3)
-
-        print(f"direction is to {direction}")
-        print(f"acceleration set to {acceleration}")
+        from .DriveStrategies.CruiseStrategy import CruiseStrategy
+        self.previous_drive_strategy = CruiseStrategy()
+        self.current_drive_strategy = CruiseStrategy()
         self.vehicle.changeAcceleration(acceleration)
-
+        self.model.highway.move_agent(self, self.vehicle.position)
         pass
 
     def step(self) -> None:
@@ -51,14 +60,20 @@ class TrafficAgent(Agent):
         pass
 
     def action(self) -> None:
+        from .DriveStrategies.CruiseStrategy import CruiseStrategy
+        from .DriveStrategies.AccelerateStrategy import AccelerateStrategy
 
-
+        self.previous_drive_strategy = copy.deepcopy(self.current_drive_strategy)
         if (np.linalg.norm(self.vehicle.velocity) <  np.linalg.norm(self.max_speed)):
-            print(f" {np.linalg.norm(self.vehicle.acceleration)=}")
-            self.vehicle.changeVelocity(self.vehicle.acceleration)
-        print(f"Before: {self.vehicle.position=}")
-        self.vehicle.changePosition(self.vehicle.velocity)
-        print(f"After: {self.vehicle.position=}\n\n")
+            if not isinstance(self.previous_drive_strategy, AccelerateStrategy):
+                self.current_drive_strategy = AccelerateStrategy()
+        else:
+            if not isinstance(self.previous_drive_strategy, CruiseStrategy):
+                self.current_drive_strategy = CruiseStrategy()
+
+ 
+        self.current_drive_strategy.step(self)
+
 
 
         pass

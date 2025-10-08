@@ -42,8 +42,7 @@ def run_pygame(model, width=800, height=800, agent_radius=3):
             # text_rect = text_surface.get_rect(center=(px, py - agent_radius - 8))
             # screen.blit(text_surface, text_rect)
 
-            if(i == 0):
-                print(f"({px}, {py})")
+
 
         pygame.display.flip()
         clock.tick(60)  # limit FPS

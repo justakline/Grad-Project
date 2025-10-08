@@ -1,8 +1,8 @@
 import random
 
 from mesa import Model
-from Highway import Highway
-from TrafficAgent import TrafficAgent
+from .Highway import Highway
+from .TrafficAgent import TrafficAgent
 import numpy as np
 class TrafficModel(Model):
     # All spacial units are in millimeters
@@ -23,9 +23,9 @@ class TrafficModel(Model):
             lane_intent = random.randint(0, len(highway.lanes)-1)
             lane = highway.lanes[lane_intent]
             start_position, end_position = lane.start_position, lane.end_position
-            print(f"{start_position=}, {end_position=}")
+            # print(f"{start_position=}, {end_position=}")
             agent = TrafficAgent(self, start_position, end_position, 4500, 1700, lane_intent)
-            highway.place_agent(agent, start_position)
+            highway.move_agent(agent, start_position)
 
 
     def step(self):
