@@ -88,6 +88,7 @@ def step_simulation():
         })
         
     except Exception as e:
+        print(e.with_traceback())
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 @app.route('/api/reset')

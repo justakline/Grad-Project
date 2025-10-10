@@ -25,7 +25,8 @@ class TrafficModel(Model):
             start_position, end_position = lane.start_position, lane.end_position
             # print(f"{start_position=}, {end_position=}")
             agent = TrafficAgent(self, start_position, end_position, 4500, 1700, lane_intent)
-            highway.move_agent(agent, start_position)
+            highway.place_agent(agent, start_position)
+            # highway.move_agent(agent, start_position)
 
 
     def step(self):

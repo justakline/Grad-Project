@@ -269,7 +269,7 @@
                 
                 ctx.beginPath();
                 ctx.arc(x, y, 3, 0, 2 * Math.PI);
-                ctx.fillStyle = '#fff';
+                ctx.fillStyle = `hsl(${Math.floor(Math.random()*360)}, 70%, 55%)`; // random color
                 ctx.fill();
             });
         }
