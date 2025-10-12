@@ -34,8 +34,13 @@ def init_simulation(sim_type):
             from src.Agent_Based_Traffic_Simulation.core.TrafficModel import TrafficModel
             from src.Agent_Based_Traffic_Simulation.core.Highway import Highway
 
+            highway_length = 200_000
+            highway_lanes = 6
+            lane_size = 3657
+            highway_width = highway_lanes * lane_size * 1.01 # 1.01 due to index out of bounds exceptions
+            
             # Highway units are millimeters
-            highway = Highway(20_000, 200_000, False, 4, 4000)
+            highway = Highway(highway_width, highway_length, False, highway_lanes, lane_size)
             simulation_model = TrafficModel(50,1, 1, highway)
             simulation_type = 'traffic'
             return jsonify({
@@ -45,7 +50,8 @@ def init_simulation(sim_type):
                 'y_max': simulation_model.highway.y_max,
                 # send lane count and width in case you want to draw lanes later
                 'lane_count': len(simulation_model.highway.lanes),
-                'lane_width': int(simulation_model.highway.lanes[0].lane_width) if simulation_model.highway.lanes else None
+                'lane_width': int(simulation_model.highway.lanes[0].lane_width) if simulation_model.highway.lanes else None,
+                    'lane_centers': [int(l.start_position[0]) for l in simulation_model.highway.lanes]
             })
 
         elif sim_type == 'demo':

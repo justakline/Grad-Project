@@ -16,9 +16,17 @@ class BrakeStrategy(DriveStrategy):
             traffic_agent.assign_strategy(AccelerateStrategy)
             return
 
+
+
+
+
+
+
+
         gap = float(traffic_agent.gap_to_lead)
         safe_min = float(traffic_agent.safe_follow_distance_minimum)
         th_ms = float(traffic_agent.time_headway) * 1000.0
+        
         if th_ms <= 0.0:
             th_ms = 1e-6  # avoid div by zero
 

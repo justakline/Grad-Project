@@ -15,7 +15,8 @@
         height: 100%;
       }
       body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu,
+          Cantarell, "Helvetica Neue", Arial;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         min-height: 100vh;
         padding: 20px;
@@ -23,7 +24,7 @@
       .container {
         max-width: 1200px;
         margin: 0 auto;
-        background: white;
+        background: #fff;
         border-radius: 15px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         overflow: hidden;
@@ -32,8 +33,8 @@
       }
       header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        padding: 24px;
+        color: #fff;
+        padding: 22px;
         text-align: center;
       }
       h1 {
@@ -68,7 +69,7 @@
         border: none;
         border-radius: 8px;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: 0.2s;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -136,7 +137,6 @@
         justify-content: center;
         align-items: center;
       }
-      /* Resizable viewport frame */
       .viewport {
         position: relative;
         resize: both;
@@ -146,10 +146,10 @@
         background: #000;
         min-width: 300px;
         min-height: 200px;
-        width: 800px; /* default width */
-        height: 600px; /* default height */
+        width: 800px;
+        height: 600px;
         box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-        cursor: grab; /* hint for panning */
+        cursor: grab;
       }
       .viewport.panning {
         cursor: grabbing;
@@ -160,11 +160,11 @@
         height: 100%;
         background: transparent;
       }
+
       .spacer {
         flex: 1 1 auto;
         min-width: 8px;
       }
-
       .zoom-wrap {
         display: inline-flex;
         align-items: center;
@@ -192,8 +192,7 @@
         border-radius: 6px;
         padding: 2px 6px;
         font-size: 12px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
-          "Liberation Mono", "Courier New", monospace;
+        font-family: ui-monospace, Menlo, Consolas, monospace;
       }
     </style>
   </head>
@@ -201,7 +200,7 @@
     <div class="container">
       <header>
         <h1>🚗 Agent Based Traffic Simulation</h1>
-        <p class="subtitle">Resize, zoom, and pan the world</p>
+        <p class="subtitle">Resize, zoom, and pan</p>
       </header>
 
       <div class="controls">
@@ -233,7 +232,7 @@
           <div class="spacer"></div>
 
           <div class="zoom-wrap">
-            <button id="zoomOutBtn" title="Zoom Out (−)">−</button>
+            <button id="zoomOutBtn" title="Zoom Out">−</button>
             <input
               id="zoomSlider"
               type="range"
@@ -242,7 +241,7 @@
               step="0.05"
               value="1"
             />
-            <button id="zoomInBtn" title="Zoom In (+)">+</button>
+            <button id="zoomInBtn" title="Zoom In">+</button>
             <span id="zoomLabel">100%</span>
             <button id="resetViewBtn" title="Reset view">Reset View</button>
           </div>
@@ -267,6 +266,7 @@
                 style="width: 90px"
             /></label>
             <button id="applyViewport">Apply Size</button>
+            <button id="toggleSense">Sensing: On</button>
           </div>
         </div>
       </div>
@@ -283,9 +283,9 @@
 
       <div class="lower-controls">
         <div class="row" style="font-size: 13px; color: #666">
-          Tips: drag to pan. Scroll to zoom at cursor. Press
-          <span class="kbd">+</span>/<span class="kbd">−</span> to zoom. Press
-          <span class="kbd">0</span> to reset view.
+          Tips: drag to pan. Scroll to zoom at cursor. Keys:
+          <span class="kbd">+</span>, <span class="kbd">−</span>,
+          <span class="kbd">0</span>.
         </div>
       </div>
 
@@ -307,6 +307,7 @@
       const vwInput = document.getElementById("vwInput");
       const vhInput = document.getElementById("vhInput");
       const applyViewportBtn = document.getElementById("applyViewport");
+      const toggleSenseBtn = document.getElementById("toggleSense");
 
       const zoomSlider = document.getElementById("zoomSlider");
       const zoomInBtn = document.getElementById("zoomInBtn");
@@ -314,7 +315,6 @@
       const zoomLabel = document.getElementById("zoomLabel");
       const resetViewBtn = document.getElementById("resetViewBtn");
 
-      // Drive strategy colors
       const driveStrategyColorMap = {
         hard_brake: "#ef4444",
         brake: "#f77926",
@@ -322,51 +322,56 @@
         cruise: "#eab308",
       };
 
-      let isRunning = false;
-      let intervalId = null;
-      let simType = null;
+      let isRunning = false,
+        intervalId = null,
+        simType = null;
 
-      // World size (mm) from backend
-      let maxX = 1000;
-      let maxY = 1000;
+      // World extents (mm) from backend
+      let maxX = 1000,
+        maxY = 1000;
+      // Highway info
+      let laneCount = 0,
+        laneWidth = 0;
 
-      // Highway/lane info from backend
-      let laneCount = 0;
-      let laneWidth = 0;
+      // View transform
+      let fitScale = 1,
+        zoom = 1,
+        s = 1,
+        ox = 0,
+        oy = 0;
 
-      // View transform: uniform scale with zoom, plus panning offsets
-      let fitScale = 1; // base scale to fit world in viewport
-      let zoom = 1; // user zoom factor (0.25x..4x)
-      let s = 1; // current scale = fitScale * zoom
-      let ox = 0; // left offset
-      let oy = 0; // top offset
+      // Panning
+      let isPanning = false,
+        panStartX = 0,
+        panStartY = 0,
+        oxAtPan = 0,
+        oyAtPan = 0;
 
-      // Panning state
-      let isPanning = false;
-      let panStartX = 0;
-      let panStartY = 0;
-      let oxAtPanStart = 0;
-      let oyAtPanStart = 0;
-
+      let showSensing = true;
       let lastAgents = [];
+      let laneCenters = [];
 
-      function setStatus(message, active = false) {
-        statusDiv.textContent = message;
+      function setStatus(msg, active = false) {
+        statusDiv.textContent = msg;
         statusDiv.className = active ? "status active" : "status";
       }
+      toggleSenseBtn.addEventListener("click", () => {
+        showSensing = !showSensing;
+        toggleSenseBtn.textContent = showSensing
+          ? "Sensing: On"
+          : "Sensing: Off";
+        redraw();
+      });
 
-      // ---------- Resize and HiDPI handling ----------
+      // Resize and HiDPI
       const ro = new ResizeObserver(() => layoutPreserveCenter());
       ro.observe(viewport);
 
       function layoutPreserveCenter() {
-        const cssW = viewport.clientWidth;
-        const cssH = viewport.clientHeight;
-
-        // world point at the current screen center BEFORE resizing
+        const cssW = viewport.clientWidth,
+          cssH = viewport.clientHeight;
         const centerBefore = screenToWorld(cssW / 2, cssH / 2);
 
-        // HiDPI backing store
         const dpr = window.devicePixelRatio || 1;
         canvas.style.width = `${cssW}px`;
         canvas.style.height = `${cssH}px`;
@@ -374,11 +379,9 @@
         canvas.height = Math.max(1, Math.round(cssH * dpr));
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        // Recompute base fit scale
         fitScale = Math.min(cssW / maxX, cssH / maxY);
         s = fitScale * zoom;
 
-        // Re-center so the same world point stays under the screen center
         const [wx, wy] = centerBefore;
         ox = cssW / 2 - wx * s;
         oy = cssH / 2 - (maxY - wy) * s;
@@ -386,46 +389,30 @@
         redraw();
       }
 
-      // ---------- Coordinate transforms ----------
       function screenToWorld(px, py) {
-        // screen to world with Y up
-        const x = (px - ox) / s;
-        const y = maxY - (py - oy) / s;
-        return [x, y];
+        return [(px - ox) / s, maxY - (py - oy) / s];
       }
       function worldToScreen(x, y) {
-        const px = ox + x * s;
-        const py = oy + (maxY - y) * s;
-        return [px, py];
+        return [ox + x * s, oy + (maxY - y) * s];
       }
 
-      // ---------- Zoom controls ----------
-      function setZoom(newZoom, anchorPx = null, anchorPy = null) {
+      // Zoom
+      function setZoom(newZoom, ax = null, ay = null) {
         newZoom = Math.min(4, Math.max(0.25, newZoom));
         if (newZoom === zoom) return;
-
-        const cssW = viewport.clientWidth;
-        const cssH = viewport.clientHeight;
-
-        const ax = anchorPx ?? cssW / 2;
-        const ay = anchorPy ?? cssH / 2;
-
-        // world point at the anchor before zoom
-        const [wx, wy] = screenToWorld(ax, ay);
-
+        const cssW = viewport.clientWidth,
+          cssH = viewport.clientHeight;
+        const px = ax ?? cssW / 2,
+          py = ay ?? cssH / 2;
+        const [wx, wy] = screenToWorld(px, py);
         zoom = newZoom;
         s = fitScale * zoom;
-
-        // keep anchor fixed after zoom
-        ox = ax - wx * s;
-        oy = ay - (maxY - wy) * s;
-
+        ox = px - wx * s;
+        oy = py - (maxY - wy) * s;
         zoomSlider.value = String(zoom);
         zoomLabel.textContent = `${Math.round(zoom * 100)}%`;
-
         redraw();
       }
-
       zoomSlider.addEventListener("input", (e) =>
         setZoom(parseFloat(e.target.value))
       );
@@ -433,21 +420,17 @@
       zoomOutBtn.addEventListener("click", () => setZoom(zoom / 1.1));
       resetViewBtn.addEventListener("click", resetView);
 
-      // Mouse wheel zoom at cursor
       viewport.addEventListener(
         "wheel",
         (e) => {
           e.preventDefault();
+          const r = viewport.getBoundingClientRect();
           const factor = e.deltaY > 0 ? 1 / 1.08 : 1.08;
-          const rect = viewport.getBoundingClientRect();
-          const px = e.clientX - rect.left;
-          const py = e.clientY - rect.top;
-          setZoom(zoom * factor, px, py);
+          setZoom(zoom * factor, e.clientX - r.left, e.clientY - r.top);
         },
         { passive: false }
       );
 
-      // Keyboard shortcuts: + / - / 0
       window.addEventListener("keydown", (e) => {
         if (e.key === "+" || e.key === "=") setZoom(zoom * 1.1);
         else if (e.key === "-" || e.key === "_") setZoom(zoom / 1.1);
@@ -458,36 +441,30 @@
         zoom = 1;
         zoomSlider.value = "1";
         zoomLabel.textContent = "100%";
-
-        // center the whole highway in the viewport
-        const cssW = viewport.clientWidth;
-        const cssH = viewport.clientHeight;
+        const cssW = viewport.clientWidth,
+          cssH = viewport.clientHeight;
         fitScale = Math.min(cssW / maxX, cssH / maxY);
         s = fitScale * zoom;
-        const contentW = s * maxX;
-        const contentH = s * maxY;
+        const contentW = s * maxX,
+          contentH = s * maxY;
         ox = (cssW - contentW) / 2;
         oy = (cssH - contentH) / 2;
-
         redraw();
       }
 
-      // ---------- Panning (click-drag) ----------
+      // Panning
       viewport.addEventListener("mousedown", (e) => {
-        // ignore drags that start on the resize handle region - browser handles resize
         isPanning = true;
         viewport.classList.add("panning");
         panStartX = e.clientX;
         panStartY = e.clientY;
-        oxAtPanStart = ox;
-        oyAtPanStart = oy;
+        oxAtPan = ox;
+        oyAtPan = oy;
       });
       window.addEventListener("mousemove", (e) => {
         if (!isPanning) return;
-        const dx = e.clientX - panStartX;
-        const dy = e.clientY - panStartY;
-        ox = oxAtPanStart + dx;
-        oy = oyAtPanStart + dy;
+        ox = oxAtPan + (e.clientX - panStartX);
+        oy = oyAtPan + (e.clientY - panStartY);
         redraw();
       });
       window.addEventListener("mouseup", () => {
@@ -495,24 +472,23 @@
         viewport.classList.remove("panning");
       });
 
-      // ---------- Viewport default size ----------
+      // Default viewport size
       applyViewportBtn.addEventListener("click", () => {
         const w = Math.max(300, parseInt(vwInput.value || "800", 10));
         const h = Math.max(200, parseInt(vhInput.value || "600", 10));
         viewport.style.width = `${w}px`;
         viewport.style.height = `${h}px`;
-        // ResizeObserver will call layoutPreserveCenter
       });
 
-      // ---------- Simulation plumbing ----------
+      // Backend plumbing
       async function initSimulation(type) {
         try {
-          const response = await fetch(`/api/init/${type}`);
-          const data = await response.json();
+          const res = await fetch(`/api/init/${type}`);
+          const data = await res.json();
           if (data.status === "success") {
             simType = type;
-            maxX = data.x_max; // highway width in mm
-            maxY = data.y_max; // highway length in mm
+            maxX = data.x_max;
+            maxY = data.y_max;
             laneCount = data.lane_count ?? 0;
             laneWidth = data.lane_width ?? 0;
             resetView();
@@ -520,12 +496,15 @@
             startBtn.disabled = false;
             stopBtn.disabled = true;
             lastAgents = [];
+            laneCount = data.lane_count ?? 0;
+            laneWidth = data.lane_width ?? 0;
+            laneCenters = Array.isArray(data.lane_centers)
+              ? data.lane_centers.slice().sort((a, b) => a - b)
+              : [];
             redraw();
-          } else {
-            setStatus(`Error: ${data.message}`);
-          }
-        } catch (error) {
-          setStatus(`Error: ${error.message}`);
+          } else setStatus(`Error: ${data.message}`);
+        } catch (err) {
+          setStatus(`Error: ${err.message}`);
         }
       }
 
@@ -538,7 +517,6 @@
         setStatus("Simulation running...", true);
         intervalId = setInterval(stepSimulation, pollingMs);
       }
-
       function stopSimulation() {
         if (!isRunning) return;
         isRunning = false;
@@ -550,12 +528,11 @@
           intervalId = null;
         }
       }
-
       async function resetSimulation() {
         stopSimulation();
         try {
-          const response = await fetch("/api/reset");
-          const data = await response.json();
+          const res = await fetch("/api/reset");
+          const data = await res.json();
           if (data.status === "success") {
             simType = null;
             lastAgents = [];
@@ -566,15 +543,14 @@
             resetView();
             setStatus("Simulation reset. Initialize a new simulation.");
           }
-        } catch (error) {
-          setStatus(`Error: ${error.message}`);
+        } catch (err) {
+          setStatus(`Error: ${err.message}`);
         }
       }
-
       async function stepSimulation() {
         try {
-          const response = await fetch("/api/step");
-          const data = await response.json();
+          const res = await fetch("/api/step");
+          const data = await res.json();
           if (data.status === "success") {
             lastAgents = data.agents;
             redraw();
@@ -584,128 +560,208 @@
             setStatus(`Error: ${data.message}`);
             stopSimulation();
           }
-        } catch (error) {
-          setStatus(`Error: ${error.message}`);
+        } catch (err) {
+          setStatus(`Error: ${err.message}`);
           stopSimulation();
         }
       }
 
-      // ---------- Drawing ----------
+      // Drawing
       function clearCanvas() {
         ctx.save();
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.restore();
-
-        // Back to CSS pixel coordinates
         const dpr = window.devicePixelRatio || 1;
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         ctx.fillStyle = "#000";
         ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
       }
 
-      function drawHighway() {
-        // Highway bounds in screen space
-        const [x0, y0] = worldToScreen(0, maxY); // top-left
-        const [x1, y1] = worldToScreen(maxX, 0); // bottom-right
-        const w = x1 - x0;
-        const h = y1 - y0;
-
-        // Asphalt background clipped to highway rectangle
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(x0, y0, w, h);
-        ctx.clip();
-
-        // Asphalt fill
-        ctx.fillStyle = "#222";
-        ctx.fillRect(x0, y0, w, h);
-
-        // If lanes available, center them within highway width
-        if (laneCount > 0 && laneWidth > 0) {
-          const totalLaneW = laneCount * laneWidth;
-          const shoulderW = Math.max(0, (maxX - totalLaneW) / 2);
-
-          // Draw shoulders as slightly darker strips
-          if (shoulderW > 0) {
-            const [sx0, sy0] = worldToScreen(0, maxY);
-            const [sx1, sy1] = worldToScreen(shoulderW, 0);
-            ctx.fillStyle = "#1a1a1a";
-            ctx.fillRect(sx0, sy0, sx1 - sx0, sy1 - sy0);
-
-            const [tx0, ty0] = worldToScreen(maxX - shoulderW, maxY);
-            const [tx1, ty1] = worldToScreen(maxX, 0);
-            ctx.fillRect(tx0, ty0, tx1 - tx0, tx1 - tx0); // width equals x span; height computed below
-            // fix height fill for right shoulder
-            ctx.fillRect(tx0, ty0, tx1 - tx0, y1 - y0);
-          }
-
-          for (let i = 0; i < laneCount; i++) {
-            const laneX0 = shoulderW + i * laneWidth;
-            const laneX1 = laneX0 + laneWidth;
-
-            // Alternating lane tone
-            const [lx0, ly0] = worldToScreen(laneX0, maxY);
-            const [lx1, ly1] = worldToScreen(laneX1, 0);
-            ctx.fillStyle = i % 2 === 0 ? "#2a2a2a" : "#2e2e2e";
-            ctx.fillRect(lx0, ly0, lx1 - lx0, ly1 - ly0);
-
-            // Center dashed line per lane
-            const cxWorld = laneX0 + laneWidth / 2;
-            const [cx0, cy0] = worldToScreen(cxWorld, 0);
-            const [cx1, cy1] = worldToScreen(cxWorld, maxY);
-            ctx.save();
-            ctx.strokeStyle = "rgba(255,255,255,0.75)";
-            ctx.setLineDash([12 * s, 14 * s]); // scale with zoom
-            ctx.lineWidth = Math.max(1, 2 * (s / (fitScale || 1)));
-            ctx.beginPath();
-            ctx.moveTo(cx0, cy0);
-            ctx.lineTo(cx1, cy1);
-            ctx.stroke();
-            ctx.restore();
-          }
-        }
-
-        // End of highway line at y = maxY (top) and start at y = 0 (bottom)
-        ctx.strokeStyle = "#f5f5f5";
-        ctx.lineWidth = Math.max(2, 3 * (s / (fitScale || 1)));
-        // Top boundary
-        ctx.beginPath();
-        ctx.moveTo(x0, y0);
-        ctx.lineTo(x0 + w, y0);
-        ctx.stroke();
-        // Bottom boundary
-        ctx.beginPath();
-        ctx.moveTo(x0, y0 + h);
-        ctx.lineTo(x0 + w, y0 + h);
-        ctx.stroke();
-
-        ctx.restore(); // release clip
-      }
-
-      function drawAgents() {
-        // Clip agents to highway rectangle so they do not render beyond bounds
-        const [x0, y0] = worldToScreen(0, maxY);
-        const [x1, y1] = worldToScreen(maxX, 0);
-        ctx.save();
+      // Clip slightly inside the highway to avoid edge shaving
+      function beginHighwayClip() {
+        const eps = 0.5 / s; // 0.5 CSS px in world units
+        const [x0, y0] = worldToScreen(0 + eps, maxY - eps); // top-left
+        const [x1, y1] = worldToScreen(maxX - eps, 0 + eps); // bottom-right
         ctx.beginPath();
         ctx.rect(x0, y0, x1 - x0, y1 - y0);
         ctx.clip();
+        return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0 };
+      }
+      // SCREEN rect for the highway [0..maxX] × [0..maxY], inclusive of edges.
+      // Uses floor for the min edge and ceil for the max edge so we never "shave" a column.
+      function getHighwayRect() {
+        const pTL = worldToScreen(0, maxY); // top-left in world
+        const pBR = worldToScreen(maxX, 0); // bottom-right in world
 
+        const xMin = Math.min(pTL[0], pBR[0]);
+        const xMax = Math.max(pTL[0], pBR[0]);
+        const yMin = Math.min(pTL[1], pBR[1]);
+        const yMax = Math.max(pTL[1], pBR[1]);
+
+        const x0 = Math.floor(xMin);
+        const y0 = Math.floor(yMin);
+        const x1 = Math.ceil(xMax);
+        const y1 = Math.ceil(yMax);
+
+        return { x0, y0, w: x1 - x0, h: y1 - y0, x1, y1 };
+      }
+
+      function drawHighway() {
+        const R = getHighwayRect();
+
+        // Base asphalt exactly fills highway rect (no clip)
+        ctx.fillStyle = "#222";
+        ctx.fillRect(R.x0, R.y0, R.w, R.h);
+
+        if (!laneWidth || !laneCenters || laneCenters.length === 0) {
+          drawHighwayBorders();
+          return;
+        }
+
+        // --- Build WORLD X edges from real lane centers ---
+        // A lane i spans [c - w/2, c + w/2]. Internal "lane edges" are the boundaries between lanes.
+        const half = laneWidth / 2;
+        const centers = laneCenters.slice().sort((a, b) => a - b);
+
+        // Lane edges (world): start with 0, then every lane left/right, and end with maxX
+        const worldEdges = [0];
+        for (const c of centers) {
+          worldEdges.push(Math.max(0, c - half));
+          worldEdges.push(Math.min(maxX, c + half));
+        }
+        if (worldEdges[worldEdges.length - 1] < maxX) worldEdges.push(maxX);
+
+        // Map once to SCREEN X, pin ends to highway rect, round internals
+        let screenEdges = worldEdges.map((x) => worldToScreen(x, 0)[0]);
+        screenEdges[0] = R.x0;
+        screenEdges[screenEdges.length - 1] = R.x1;
+        for (let i = 1; i < screenEdges.length - 1; i++)
+          screenEdges[i] = Math.round(screenEdges[i]);
+
+        // --- Paint consecutive strips full height; accumulated to avoid any gap at right ---
+        let x = screenEdges[0];
+        for (let i = 0; i < screenEdges.length - 1; i++) {
+          const next = i < screenEdges.length - 2 ? screenEdges[i + 1] : R.x1; // force last to hit R.x1
+          const w = next - x;
+          if (w <= 0) {
+            x = next;
+            continue;
+          }
+
+          // Decide if this strip is a lane or shoulder by sampling midpoint in WORLD
+          const midW = (worldEdges[i] + worldEdges[i + 1]) / 2;
+          let isLane = false;
+          for (const c of centers) {
+            if (midW >= c - half && midW <= c + half) {
+              isLane = true;
+              break;
+            }
+          }
+
+          ctx.fillStyle = isLane ? (i % 2 ? "#343434" : "#2c2c2c") : "#151515";
+          ctx.fillRect(x, R.y0, w, R.h);
+
+          x = next;
+        }
+
+        // --- Dashed lines at LANE EDGES (boundaries between lanes), not lane centers ---
+        ctx.save();
+        ctx.strokeStyle = "rgba(255,255,255,0.80)";
+        ctx.setLineDash([12 * s, 14 * s]);
+        ctx.lineWidth = Math.max(1, 2 * (s / (fitScale || 1)));
+
+        // Collect unique internal edges (exclude 0 and maxX)
+        const edgeSet = new Set();
+        for (const c of centers) {
+          const L = Math.max(0, c - half);
+          const Rw = Math.min(maxX, c + half);
+          edgeSet.add(L);
+          edgeSet.add(Rw);
+        }
+        edgeSet.delete(0);
+        edgeSet.delete(maxX);
+
+        for (const edge of Array.from(edgeSet).sort((a, b) => a - b)) {
+          const [sx0, sy0] = worldToScreen(edge, 0);
+          const [sx1, sy1] = worldToScreen(edge, maxY);
+          ctx.beginPath();
+          ctx.moveTo(sx0, sy0);
+          ctx.lineTo(sx1, sy1);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        drawHighwayBorders();
+      }
+      // Paint black outside the highway instead of clipping (avoids edge shaving entirely)
+      function maskOutsideHighway() {
+        const R = getHighwayRect();
+        const W = canvas.width / (window.devicePixelRatio || 1);
+        const H = canvas.height / (window.devicePixelRatio || 1);
+
+        ctx.fillStyle = "#000";
+        // left
+        if (R.x0 > 0) ctx.fillRect(0, 0, R.x0, H);
+        // right
+        if (R.x1 < W) ctx.fillRect(R.x1, 0, W - R.x1, H);
+        // top
+        if (R.y0 > 0) ctx.fillRect(R.x0, 0, R.w, R.y0);
+        // bottom
+        if (R.y1 < H) ctx.fillRect(R.x0, R.y1, R.w, H - R.y1);
+      }
+
+      function drawHighwayBorders() {
+        ctx.save();
+        ctx.strokeStyle = "#f5f5f5";
+        ctx.lineWidth = Math.max(2, 3 * (s / (fitScale || 1)));
+        const tL = worldToScreen(0, maxY),
+          tR = worldToScreen(maxX, maxY);
+        const bL = worldToScreen(0, 0),
+          bR = worldToScreen(maxX, 0);
+        ctx.beginPath();
+        ctx.moveTo(tL[0], tL[1]);
+        ctx.lineTo(tR[0], tR[1]);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(bL[0], bL[1]);
+        ctx.lineTo(bR[0], bR[1]);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      function drawAgents() {
         for (const a of lastAgents) {
           const [px, py] = worldToScreen(a.x, a.y);
-
           const halfL = Math.max(0.5, (a.length * s - 1) / 2);
           const halfW = (a.width * s) / 2;
 
-          const color = driveStrategyColorMap[a.drive_strategy] ?? "#ffffff";
+          if (showSensing && Number.isFinite(a.sensing_distance)) {
+            const r = a.sensing_distance * s;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(px, py, r, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(33,150,243,0.12)";
+            ctx.strokeStyle = "rgba(33,150,243,0.35)";
+            ctx.lineWidth = 1;
+            ctx.setLineDash([6, 6]);
+            ctx.fill();
+            ctx.stroke();
+            ctx.setLineDash([]);
+            ctx.restore();
+          }
 
+          const color =
+            {
+              hard_brake: "#ef4444",
+              brake: "#f77926",
+              accelerate: "#22c55e",
+              cruise: "#eab308",
+            }[a.drive_strategy] || "#ffffff";
           ctx.save();
           ctx.translate(px, py);
           const heading = simType === "traffic" ? -a.heading : a.heading;
           ctx.rotate(heading);
-
-          // vehicle body
           ctx.fillStyle = color;
           ctx.strokeStyle = "#111";
           ctx.lineWidth = 1;
@@ -713,26 +769,57 @@
           ctx.rect(-halfL, -halfW, 2 * halfL, 2 * halfW);
           ctx.fill();
           ctx.stroke();
-
-          // front seam
           ctx.beginPath();
           ctx.moveTo(halfL, -halfW);
           ctx.lineTo(halfL, halfW);
           ctx.stroke();
-
           ctx.restore();
         }
-
-        ctx.restore(); // end clip
       }
 
       function redraw() {
         clearCanvas();
         drawHighway();
-        drawAgents();
+        drawAgents(); // draw without clip
+        maskOutsideHighway(); // cover overflow outside highway
       }
 
-      // First layout using default viewport size
+      // --- NEW: highway rect in SCREEN pixels (sorted, integer-snapped) ---
+      // SCREEN rect for the highway [0..maxX] × [0..maxY]
+      // Highway rect in SCREEN pixels (inclusive of edges)
+      function getHighwayRect() {
+        const pTL = worldToScreen(0, maxY); // top-left
+        const pBR = worldToScreen(maxX, 0); // bottom-right
+
+        const x0 = Math.floor(Math.min(pTL[0], pBR[0]));
+        const y0 = Math.floor(Math.min(pTL[1], pBR[1]));
+        const x1 = Math.ceil(Math.max(pTL[0], pBR[0]));
+        const y1 = Math.ceil(Math.max(pTL[1], pBR[1]));
+
+        return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0 };
+      }
+
+      // --- NEW: fillRect with integer snapping to reduce AA seams ---
+      function fillRectSnap(x, y, w, h, color) {
+        ctx.fillStyle = color;
+        const rx = Math.round(x);
+        const ry = Math.round(y);
+        const rw = Math.round(x + w) - rx;
+        const rh = Math.round(y + h) - ry;
+        if (rw > 0 && rh > 0) ctx.fillRect(rx, ry, rw, rh);
+      }
+      function debugOutline() {
+        const R = getHighwayRect();
+        ctx.save();
+        ctx.strokeStyle = "cyan";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 4]);
+        ctx.strokeRect(R.x0 + 0.5, R.y0 + 0.5, R.w - 1, R.h - 1);
+        ctx.restore();
+      }
+      // call: debugOutline();
+
+      // Initial layout
       layoutPreserveCenter();
     </script>
   </body>
