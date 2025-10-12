@@ -22,7 +22,7 @@ class TrafficAgent(Agent):
         self.lane_intent = lane_intent
 
         # dynamics and sensing (mm, ms)
-        self.max_speed = random.uniform(50, 250)   # mm/ms
+        self.max_speed = random.uniform(50, 350)   # mm/ms
         self.sensing_distance = 5_000             # mm
         self.clearance_buffer = 200.0              # mm extra beyond nose-to-nose
 
@@ -31,6 +31,8 @@ class TrafficAgent(Agent):
         self.b_max = 4.004         # mm/ms^2
         self.time_headway = 1.2  # seconds (⚠ multiply speeds by 1000)
         self.safe_follow_distance_minimum = 500    # mm floor
+        self.slow_brake_distance_start = 12_000 #12 meters distance we start to brake
+        self.hard_brake_distance_start = 5_000 #5 meters distance we start to brake hard
 
         # strategies
         from .DriveStrategies.CruiseStrategy import CruiseStrategy
@@ -63,8 +65,13 @@ class TrafficAgent(Agent):
         self.vehicle.position += (self.vehicle.velocity * dt
 )
         # bounds
+        
+        if(self.unique_id ==4):
+            print(f"{self.pos[1]} --- max is {self.model.highway.y_max}")
+        
         if (self.vehicle.position[0] >= self.model.highway.x_max or self.vehicle.position[0] <= self.model.highway.x_min
             or self.vehicle.position[1] >= self.model.highway.y_max or self.vehicle.position[1] <= self.model.highway.y_min):
+            self.model.deregister_agent(self)
             return
 
         self.model.highway.move_agent(self, self.vehicle.position)
@@ -86,15 +93,19 @@ class TrafficAgent(Agent):
         velocity_scalar = float(np.linalg.norm(self.vehicle.velocity))
 
         # if no lead: accelerate to max then cruise
-        print(f"{velocity_scalar=} vs {self.max_speed}")
         if self.lead is None:
             # no leader: accelerate up to max, then cruise
+            # print(f"{self.unique_id}")
+            if(self.unique_id ==4):
+                print("No lead")
             if velocity_scalar < self.max_speed:
                 self.assign_strategy(AccelerateStrategy)
             else:
                 # print("cruise")
                 self.assign_strategy(CruiseStrategy)
         else:
+            if(self.unique_id ==4):
+                print("YES lead")
             # there IS a leader
             if self.gap_to_lead is not None and self.gap_to_lead < self.safe_follow_distance_minimum:
                 # too close → brake

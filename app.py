@@ -7,6 +7,10 @@ from flask import Flask, render_template, jsonify
 from flask_cors import CORS
 import traceback
 
+import logging
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
+logging.getLogger("werkzeug").disabled = True
+
 # Make project modules importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'Agent Based Traffic Simulation', 'core'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'Agent Based Traffic Simulation', 'demo'))
@@ -31,7 +35,7 @@ def init_simulation(sim_type):
             from src.Agent_Based_Traffic_Simulation.core.Highway import Highway
 
             # Highway units are millimeters
-            highway = Highway(20_000, 100_000, False, 4, 3657)
+            highway = Highway(20_000, 200_000, False, 4, 4000)
             simulation_model = TrafficModel(50,1, 1, highway)
             simulation_type = 'traffic'
             return jsonify({
