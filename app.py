@@ -1,19 +1,23 @@
 import sys
 import os
 import json
+import math
+import warnings
 from flask import Flask, render_template, jsonify
 from flask_cors import CORS
+import traceback
 
+# Make project modules importable
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'Agent Based Traffic Simulation', 'core'))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src', 'Agent Based Traffic Simulation', 'demo'))
 
 app = Flask(__name__)
 CORS(app)
+warnings.filterwarnings("ignore", category=UserWarning)
 
 simulation_model = None
 simulation_type = None
 
-# Flask web server (main entry point)
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -21,25 +25,27 @@ def index():
 @app.route('/api/init/<sim_type>')
 def init_simulation(sim_type):
     global simulation_model, simulation_type
-    
     try:
         if sim_type == 'traffic':
             from src.Agent_Based_Traffic_Simulation.core.TrafficModel import TrafficModel
             from src.Agent_Based_Traffic_Simulation.core.Highway import Highway
-            
+
+            # Highway units are millimeters
             highway = Highway(20_000, 100_000, False, 4, 3657)
-            simulation_model = TrafficModel(50, 1, highway)
+            simulation_model = TrafficModel(50,1, 1, highway)
             simulation_type = 'traffic'
             return jsonify({
                 'status': 'success',
                 'message': 'Traffic simulation initialized',
                 'x_max': simulation_model.highway.x_max,
-                'y_max': simulation_model.highway.y_max
+                'y_max': simulation_model.highway.y_max,
+                # send lane count and width in case you want to draw lanes later
+                'lane_count': len(simulation_model.highway.lanes),
+                'lane_width': int(simulation_model.highway.lanes[0].lane_width) if simulation_model.highway.lanes else None
             })
-            
+
         elif sim_type == 'demo':
             from src.Agent_Based_Traffic_Simulation.demo.MyModel import MyModel
-            
             simulation_model = MyModel(n_agents=100)
             simulation_type = 'demo'
             return jsonify({
@@ -50,46 +56,68 @@ def init_simulation(sim_type):
             })
         else:
             return jsonify({'status': 'error', 'message': 'Invalid simulation type'}), 400
-                
-    except Exception as e:
 
-        print(e.with_traceback())
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+    except Exception:
+        print("Exception in /api/init:\n" + traceback.format_exc())
+        return jsonify({'status': 'error', 'message': 'Initialization failed'}), 500
 
 @app.route('/api/step')
 def step_simulation():
     global simulation_model, simulation_type
-    
     if simulation_model is None:
         return jsonify({'status': 'error', 'message': 'No simulation initialized'}), 400
-    
+
     try:
         simulation_model.step()
-        
+
         agents_data = []
         for agent in simulation_model.agents:
             if simulation_type == 'traffic':
+                # Real-world values straight from the model (mm, mm/ms)
+                x = float(agent.vehicle.position[0])
+                y = float(agent.vehicle.position[1])
+                vx = float(agent.vehicle.velocity[0])
+                vy = float(agent.vehicle.velocity[1])
+                speed = (vx**2 + vy**2) ** 0.5
+                length_mm = float(agent.vehicle.length)  # already mm
+                width_mm = float(agent.vehicle.width)    # already mm
+                # Heading in radians from velocity; fall back to lane direction if stopped
+                if speed > 0:
+                    heading = math.atan2(vy, vx)
+                else:
+                    lane = simulation_model.highway.lanes[agent.lane_intent]
+                    dx, dy = (lane.end_position - lane.start_position)
+                    heading = math.atan2(float(dy), float(dx))
+
                 agents_data.append({
-                    'x': float(agent.vehicle.position[0]),
-                    'y': float(agent.vehicle.position[1]),
-                    'id': agent.unique_id
+                    'id': agent.unique_id,
+                    'x': x,                # mm
+                    'y': y,                # mm
+                    'vx': vx,              # mm/ms
+                    'vy': vy,              # mm/ms
+                    'speed': speed,        # mm/ms
+                    'length': length_mm,   # mm
+                    'width': width_mm,     # mm
+                    'heading': heading,    # radians
+                    'drive_strategy': getattr(agent.current_drive_strategy, "name", "unknown"),
+                    'sensing_distance':  getattr(agent, "sensing_distance", "unknown"),
                 })
             else:
                 agents_data.append({
+                    'id': agent.unique_id,
                     'x': float(agent.pos[0]),
-                    'y': float(agent.pos[1]),
-                    'id': agent.unique_id
+                    'y': float(agent.pos[1])
                 })
-        
+
         return jsonify({
             'status': 'success',
             'agents': agents_data,
             'step': simulation_model.steps
         })
-        
-    except Exception as e:
-        print(e.with_traceback())
-        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+    except Exception:
+        print("Exception in /api/step:\n" + traceback.format_exc())
+        return jsonify({'status': 'error', 'message': 'Step failed'}), 500
 
 @app.route('/api/reset')
 def reset_simulation():
@@ -99,4 +127,5 @@ def reset_simulation():
     return jsonify({'status': 'success', 'message': 'Simulation reset'})
 
 if __name__ == '__main__':
+    # debug=False to avoid double-running model (Flask reloader)
     app.run(host='0.0.0.0', port=5000, debug=False)

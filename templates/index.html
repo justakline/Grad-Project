@@ -1,323 +1,480 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Agent Based Traffic Simulation</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            overflow: hidden;
-        }
-        
-        header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        
-        .subtitle {
-            font-size: 1.1em;
-            opacity: 0.9;
-        }
-        
-        .controls {
-            padding: 30px;
-            background: #f8f9fa;
-            border-bottom: 2px solid #e9ecef;
-        }
-        
-        .button-group {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
-        
-        button {
-            padding: 12px 30px;
-            font-size: 16px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
-        }
-        
-        .btn-traffic {
-            background: #4CAF50;
-            color: white;
-        }
-        
-        .btn-traffic:hover {
-            background: #45a049;
-        }
-        
-        .btn-demo {
-            background: #2196F3;
-            color: white;
-        }
-        
-        .btn-demo:hover {
-            background: #0b7dda;
-        }
-        
-        .btn-start {
-            background: #FF9800;
-            color: white;
-        }
-        
-        .btn-start:hover {
-            background: #e68900;
-        }
-        
-        .btn-stop {
-            background: #f44336;
-            color: white;
-        }
-        
-        .btn-stop:hover {
-            background: #da190b;
-        }
-        
-        .btn-reset {
-            background: #9E9E9E;
-            color: white;
-        }
-        
-        .btn-reset:hover {
-            background: #757575;
-        }
-        
-        button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        
-        .canvas-container {
-            padding: 30px;
-            background: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 600px;
-        }
-        
-        canvas {
-            border: 3px solid #667eea;
-            border-radius: 10px;
-            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
-            background: #000;
-        }
-        
-        .info {
-            padding: 20px 30px;
-            background: #f8f9fa;
-            text-align: center;
-            font-size: 18px;
-            color: #495057;
-        }
-        
-        .status {
-            padding: 15px 30px;
-            background: #e9ecef;
-            text-align: center;
-            font-weight: 600;
-            color: #495057;
-        }
-        
-        .status.active {
-            background: #d4edda;
-            color: #155724;
-        }
+      html,
+      body {
+        height: 100vh;
+        #overflow: hidden;
+      }
+      .container {
+        max-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+      .canvas-container {
+        flex: 1 1 auto;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        overflow: hidden;
+      }
+      header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 30px;
+        text-align: center;
+      }
+      h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+      }
+      .subtitle {
+        font-size: 1.1em;
+        opacity: 0.9;
+      }
+      .controls {
+        padding: 30px;
+        background: #f8f9fa;
+        border-bottom: 2px solid #e9ecef;
+      }
+      .button-group {
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+      button {
+        padding: 12px 30px;
+        font-size: 16px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      }
+      .btn-traffic {
+        background: #4caf50;
+        color: white;
+      }
+      .btn-traffic:hover {
+        background: #45a049;
+      }
+      .btn-demo {
+        background: #2196f3;
+        color: white;
+      }
+      .btn-demo:hover {
+        background: #0b7dda;
+      }
+      .btn-start {
+        background: #ff9800;
+        color: white;
+      }
+      .btn-start:hover {
+        background: #e68900;
+      }
+      .btn-stop {
+        background: #f44336;
+        color: white;
+      }
+      .btn-stop:hover {
+        background: #da190b;
+      }
+      .btn-reset {
+        background: #9e9e9e;
+        color: white;
+      }
+      .btn-reset:hover {
+        background: #757575;
+      }
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .canvas-container {
+        padding: 30px;
+        background: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 600px;
+      }
+      canvas {
+        border: 3px solid #667eea;
+        border-radius: 10px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+        background: #000;
+        max-width: 100%;
+        height: auto;
+      }
+      .info {
+        padding: 20px 30px;
+        background: #f8f9fa;
+        text-align: center;
+        font-size: 18px;
+        color: #495057;
+      }
+      .status {
+        padding: 15px 30px;
+        background: #e9ecef;
+        text-align: center;
+        font-weight: 600;
+        color: #495057;
+      }
+      .status.active {
+        background: #d4edda;
+        color: #155724;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <div class="container">
-        <header>
-            <h1>🚗 Agent Based Traffic Simulation</h1>
-            <p class="subtitle">Interactive Web Visualization</p>
-        </header>
-        
-        <div class="controls">
-            <div class="button-group">
-                <button class="btn-traffic" onclick="initSimulation('traffic')">Initialize Traffic Simulation</button>
-                <button class="btn-demo" onclick="initSimulation('demo')">Initialize Demo Simulation</button>
-                <button class="btn-start" id="startBtn" onclick="startSimulation()" disabled>Start</button>
-                <button class="btn-stop" id="stopBtn" onclick="stopSimulation()" disabled>Stop</button>
-                <button class="btn-reset" onclick="resetSimulation()">Reset</button>
-            </div>
+      <header>
+        <h1>🚗 Agent Based Traffic Simulation</h1>
+        <p class="subtitle">Interactive Web Visualization</p>
+      </header>
+
+      <div class="controls">
+        <div class="button-group">
+          <button class="btn-traffic" onclick="initSimulation('traffic')">
+            Initialize Traffic Simulation
+          </button>
+          <button class="btn-demo" onclick="initSimulation('demo')">
+            Initialize Demo Simulation
+          </button>
+          <button
+            class="btn-start"
+            id="startBtn"
+            onclick="startSimulation()"
+            disabled
+          >
+            Start
+          </button>
+          <button
+            class="btn-stop"
+            id="stopBtn"
+            onclick="stopSimulation()"
+            disabled
+          >
+            Stop
+          </button>
+          <button class="btn-reset" onclick="resetSimulation()">Reset</button>
+          <button class="btn-demo" id="toggleSense" onclick="toggleSense()">
+            Toggle Sensing
+          </button>
         </div>
-        
-        <div class="status" id="status">No simulation loaded. Click a button above to initialize.</div>
-        
-        <div class="canvas-container">
-            <canvas id="simulationCanvas" width="800" height="600"></canvas>
-        </div>
-        
-        <div class="info" id="info">
-            <p>Step: <span id="stepCount">0</span> | Agents: <span id="agentCount">0</span></p>
-        </div>
+      </div>
+
+      <div class="status" id="status">
+        No simulation loaded. Click a button above to initialize.
+      </div>
+
+      <div class="canvas-container">
+        <canvas id="simulationCanvas" width="800" height="600"></canvas>
+      </div>
+
+      <div class="info" id="info">
+        <p>
+          Step: <span id="stepCount">0</span> | Agents:
+          <span id="agentCount">0</span>
+        </p>
+      </div>
     </div>
 
     <script>
-        const canvas = document.getElementById('simulationCanvas');
-        const ctx = canvas.getContext('2d');
-        const statusDiv = document.getElementById('status');
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const stepCountSpan = document.getElementById('stepCount');
-        const agentCountSpan = document.getElementById('agentCount');
-        
-        let isRunning = false;
-        let intervalId = null;
-        let simType = null;
-        let maxX = 1000;
-        let maxY = 1000;
-        
-        function setStatus(message, active = false) {
-            statusDiv.textContent = message;
-            statusDiv.className = active ? 'status active' : 'status';
+      const canvas = document.getElementById("simulationCanvas");
+      const ctx = canvas.getContext("2d");
+      const statusDiv = document.getElementById("status");
+      const startBtn = document.getElementById("startBtn");
+      const stopBtn = document.getElementById("stopBtn");
+      const stepCountSpan = document.getElementById("stepCount");
+      const agentCountSpan = document.getElementById("agentCount");
+
+      const driveStrategyColorMap = {
+        hard_brake: "#ef4444", // red
+        brake: "#f77926", // orange-red
+        accelerate: "#22c55e", // green
+        cruise: "#eab308", // yellow
+      };
+
+      let isRunning = false;
+      let intervalId = null;
+      let simType = null;
+      let maxX = 1000; // mm
+      let maxY = 1000; // mm
+      // add near your globals
+      let showSensing = true;
+
+      // toggle handler
+      function toggleSense() {
+        showSensing = !showSensing;
+        document.getElementById("toggleSense").textContent = showSensing
+          ? "Sensing: On"
+          : "Sensing: Off";
+        if (lastAgents.length) drawAgents(lastAgents);
+      }
+
+      function setStatus(message, active = false) {
+        statusDiv.textContent = message;
+        statusDiv.className = active ? "status active" : "status";
+      }
+
+      let lastAgents = []; // keep the most recent frame for redraws when paused
+
+      function fitCanvasToHighway() {
+        const container = document.querySelector(".container");
+        const header = container.querySelector("header");
+        const controls = container.querySelector(".controls");
+        const statusBar = container.querySelector(".status");
+        const infoBar = container.querySelector(".info");
+        const canvasWrap = document.querySelector(".canvas-container");
+
+        const aspect = maxY > 0 ? maxX / maxY : 1;
+
+        // Available width and height inside the viewport
+        const availableWidth = canvasWrap.clientWidth; // already accounts for side padding
+        const chromeHeights =
+          header.offsetHeight +
+          controls.offsetHeight +
+          statusBar.offsetHeight +
+          infoBar.offsetHeight +
+          40; // small safety margin
+
+        const availableHeight = Math.max(
+          200,
+          window.innerHeight - chromeHeights
+        );
+
+        // Fit by whichever dimension is limiting, keep aspect
+        let targetWidth = availableWidth;
+        let targetHeight = targetWidth / aspect;
+
+        if (targetHeight > availableHeight) {
+          targetHeight = availableHeight;
+          targetWidth = targetHeight * aspect;
         }
-        
-        async function initSimulation(type) {
-            try {
-                const response = await fetch(`/api/init/${type}`);
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    simType = type;
-                    maxX = data.x_max;
-                    maxY = data.y_max;
-                    setStatus(`${data.message}. Click Start to begin.`, true);
-                    startBtn.disabled = false;
-                    stopBtn.disabled = true;
-                    clearCanvas();
-                } else {
-                    setStatus(`Error: ${data.message}`);
-                }
-            } catch (error) {
-                setStatus(`Error: ${error.message}`);
-            }
+
+        // Set CSS size for layout
+        canvas.style.width = `${Math.round(targetWidth)}px`;
+        canvas.style.height = `${Math.round(targetHeight)}px`;
+
+        // Set real pixel size for crisp rendering on HiDPI
+        const dpr = window.devicePixelRatio || 1;
+        canvas.width = Math.round(targetWidth * dpr);
+        canvas.height = Math.round(targetHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0); // reset and scale to DPR
+
+        // Redraw last known frame so visuals update immediately on resize
+        if (lastAgents.length) {
+          drawAgents(lastAgents);
+        } else {
+          clearCanvas();
         }
-        
-        function clearCanvas() {
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-        
-        async function stepSimulation() {
-            try {
-                const response = await fetch('/api/step');
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    drawAgents(data.agents);
-                    stepCountSpan.textContent = data.step;
-                    agentCountSpan.textContent = data.agents.length;
-                } else {
-                    setStatus(`Error: ${data.message}`);
-                    stopSimulation();
-                }
-            } catch (error) {
-                setStatus(`Error: ${error.message}`);
-                stopSimulation();
-            }
-        }
-        
-        function drawAgents(agents) {
+      }
+
+      async function initSimulation(type) {
+        try {
+          const response = await fetch(`/api/init/${type}`);
+          const data = await response.json();
+
+          if (data.status === "success") {
+            simType = type;
+            maxX = data.x_max; // mm
+            maxY = data.y_max; // mm
+            fitCanvasToHighway();
+            setStatus(`${data.message}. Click Start to begin.`, true);
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
             clearCanvas();
-            
-            const scaleX = canvas.width / maxX;
-            const scaleY = canvas.height / maxY;
-            
-            agents.forEach(agent => {
-                const x = agent.x * scaleX;
-                const y = simType === 'traffic' ? 
-                    (canvas.height - agent.y * scaleY) : 
-                    (agent.y * scaleY);
-                
-                ctx.beginPath();
-                ctx.arc(x, y, 3, 0, 2 * Math.PI);
-                ctx.fillStyle = `hsl(${Math.floor(Math.random()*360)}, 70%, 55%)`; // random color
-                ctx.fill();
-            });
+          } else {
+            setStatus(`Error: ${data.message}`);
+          }
+        } catch (error) {
+          setStatus(`Error: ${error.message}`);
         }
-        
-        function startSimulation() {
-            if (!isRunning) {
-                isRunning = true;
-                startBtn.disabled = true;
-                stopBtn.disabled = false;
-                setStatus('Simulation running...', true);
-                intervalId = setInterval(stepSimulation, 50);
-            }
-        }
-        
-        function stopSimulation() {
-            if (isRunning) {
-                isRunning = false;
-                startBtn.disabled = false;
-                stopBtn.disabled = true;
-                setStatus('Simulation paused');
-                if (intervalId) {
-                    clearInterval(intervalId);
-                    intervalId = null;
-                }
-            }
-        }
-        
-        async function resetSimulation() {
+      }
+
+      // replace your clearCanvas with this
+      function clearCanvas() {
+        ctx.save();
+        // clear using identity transform to avoid 1px gaps on HiDPI
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+      }
+
+      async function stepSimulation() {
+        try {
+          const response = await fetch("/api/step");
+          const data = await response.json();
+
+          if (data.status === "success") {
+            lastAgents = data.agents; // keep last frame
+            drawAgents(data.agents);
+            stepCountSpan.textContent = data.step;
+            agentCountSpan.textContent = data.agents.length;
+          } else {
+            setStatus(`Error: ${data.message}`);
             stopSimulation();
-            try {
-                const response = await fetch('/api/reset');
-                const data = await response.json();
-                
-                if (data.status === 'success') {
-                    simType = null;
-                    startBtn.disabled = true;
-                    stopBtn.disabled = true;
-                    stepCountSpan.textContent = '0';
-                    agentCountSpan.textContent = '0';
-                    clearCanvas();
-                    setStatus('Simulation reset. Initialize a new simulation.');
-                }
-            } catch (error) {
-                setStatus(`Error: ${error.message}`);
-            }
+          }
+        } catch (error) {
+          setStatus(`Error: ${error.message}`);
+          stopSimulation();
         }
-        
+      }
+
+      function drawAgents(agents) {
         clearCanvas();
+
+        const sx = canvas.width / maxX;
+        const sy = canvas.height / maxY;
+
+        agents.forEach((a) => {
+          const px = a.x * sx;
+          const pyWorld = a.y * sy;
+          const py = simType === "traffic" ? canvas.height - pyWorld : pyWorld;
+          // current
+          // const halfL = (a.length * sx) / 2;
+
+          // new: subtract 1 px total from the rendered length to avoid visual touching
+          const pxTrim = 1; // one screen pixel total
+          const halfL = Math.max(0.5, (a.length * sx - pxTrim) / 2);
+
+          const halfW = (a.width * sy) / 2;
+
+          // --- sensing radius render (transparent) ---
+          if (showSensing) {
+            const senseRangeMm = a.sensing_distance;
+            const rx = senseRangeMm * sx;
+            const ry = senseRangeMm * sy;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.ellipse(px, py, rx, ry, 0, 0, Math.PI * 2);
+            ctx.fillStyle = "rgba(33, 150, 243, 0.12)"; // light fill
+            ctx.strokeStyle = "rgba(33, 150, 243, 0.35)"; // subtle outline
+            ctx.lineWidth = 1;
+            ctx.setLineDash([6, 6]);
+            ctx.fill();
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            ctx.restore();
+          }
+          // --- end sensing radius ---
+
+          // draw oriented car
+          const color = driveStrategyColorMap[a.drive_strategy] ?? "#ffffff";
+          ctx.save();
+          ctx.translate(px, py);
+          const heading = simType === "traffic" ? -a.heading : a.heading;
+          ctx.rotate(heading);
+
+          ctx.fillStyle = color;
+          ctx.strokeStyle = "#111";
+          ctx.lineWidth = 1;
+
+          ctx.beginPath();
+          ctx.rect(-halfL, -halfW, 2 * halfL, 2 * halfW);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(halfL, -halfW);
+          ctx.lineTo(halfL, halfW);
+          ctx.stroke();
+
+          ctx.restore();
+        });
+      }
+
+      function startSimulation() {
+        if (!isRunning) {
+          isRunning = true;
+          startBtn.disabled = true;
+          stopBtn.disabled = false;
+          setStatus("Simulation running...", true);
+          intervalId = setInterval(stepSimulation, 50);
+        }
+      }
+
+      function stopSimulation() {
+        if (isRunning) {
+          isRunning = false;
+          startBtn.disabled = false;
+          stopBtn.disabled = true;
+          setStatus("Simulation paused");
+          if (intervalId) {
+            clearInterval(intervalId);
+            intervalId = null;
+          }
+        }
+      }
+
+      async function resetSimulation() {
+        stopSimulation();
+        try {
+          const response = await fetch("/api/reset");
+          const data = await response.json();
+          if (data.status === "success") {
+            simType = null;
+            lastAgents = []; // clear cached frame
+            startBtn.disabled = true;
+            stopBtn.disabled = true;
+            stepCountSpan.textContent = "0";
+            agentCountSpan.textContent = "0";
+            clearCanvas();
+            setStatus("Simulation reset. Initialize a new simulation.");
+          }
+        } catch (error) {
+          setStatus(`Error: ${error.message}`);
+        }
+      }
+
+      let resizePending = false;
+      window.addEventListener("resize", () => {
+        if (!resizePending) {
+          resizePending = true;
+          requestAnimationFrame(() => {
+            fitCanvasToHighway();
+            resizePending = false;
+          });
+        }
+      });
+
+      clearCanvas();
     </script>
-</body>
+  </body>
 </html>

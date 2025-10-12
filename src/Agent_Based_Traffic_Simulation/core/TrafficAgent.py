@@ -1,114 +1,145 @@
-import math
 import random
+from typing import TYPE_CHECKING, Type
 
-import mesa
 import numpy as np
-import copy
-
-from mesa import Model, Agent
-from mesa.space import ContinuousSpace
+from mesa import Agent
 
 from . import TrafficModel
 from .Vehicle import Vehicle
 
-
-from typing import TYPE_CHECKING, Type
 if TYPE_CHECKING:
     from .DriveStrategies.DriveStrategy import DriveStrategy
-    from .DriveStrategies.CruiseStrategy import CruiseStrategy
-    from .DriveStrategies.AccelerateStrategy import AccelerateStrategy
+
 
 class TrafficAgent(Agent):
     model: TrafficModel
-    def __init__(self, model:TrafficModel, position:np.array, goal: np.array, length: float, width:float, lane_intent:int):
-        super().__init__(model)
-        self.vehicle:Vehicle = Vehicle(position, length, width)
-        self.goal:np.array = goal
-        self.lane_intent = lane_intent
-        self.max_speed = random.randint(18,250 ) #40  miles per hour in mm/ms as the lowest
 
-        direction: np.array = np.subtract(model.highway.lanes[lane_intent].end_position,model.highway.lanes[lane_intent].start_position)
-        acceleration = direction/np.linalg.norm(direction) * random.uniform(0.5,3)
+    def __init__(self, model: TrafficModel, position: np.ndarray, goal: np.ndarray,
+                 length: float, width: float, lane_intent: int):
+        super().__init__(model)
+        self.vehicle: Vehicle = Vehicle(position, length, width)
+        self.goal: np.ndarray = goal
+        self.lane_intent = lane_intent
+
+        # dynamics and sensing (mm, ms)
+        self.max_speed = random.uniform(50, 250)   # mm/ms
+        self.sensing_distance = 5_000             # mm
+        self.clearance_buffer = 200.0              # mm extra beyond nose-to-nose
+
+        # control params
+        self.a_max = 3.00         # mm/ms^2
+        self.b_max = 4.004         # mm/ms^2
+        self.time_headway = 1.2  # seconds (⚠ multiply speeds by 1000)
+        self.safe_follow_distance_minimum = 500    # mm floor
+
+        # strategies
         from .DriveStrategies.CruiseStrategy import CruiseStrategy
         self.previous_drive_strategy = CruiseStrategy()
         self.current_drive_strategy = CruiseStrategy()
-        self.vehicle.changeAcceleration(acceleration)
-        
-        # How long it takes to make a decision in ms
-        self.decision_time = random.randint(10, 50)
-        # How long since the last decision
+
+        # lead tracking (updated every tick)
+        self.lead = None
+        self.direction = None
+        self.gap_to_lead = None  # center-to-center, longitudinal mm
+
+        # decision cadence
+        self.decision_time = random.randint(10, 50)  # ms
         self.internal_timer = self.decision_time
 
-        self.model.highway.move_agent(self, self.vehicle.position)
-        pass
+        # small initial push along lane
+        self.vehicle.changeAcceleration(self.lane_direction() * random.uniform(0.002, 0.008))
+        # self.model.highway.move_agent(self, self.vehicle.position)
 
+    # ---------- tick ----------
     def step(self) -> None:
-        # For right now they are only going to decide to get a working prototype down
+        dt = 1.0  # ms
+        # self.sense()
 
+        # decide -> set acceleration
         self.action()
-     
 
-        if(self.vehicle.position[0] >= self.model.highway.x_max or self.vehicle.position[0] <= self.model.highway.x_min
-        or self.vehicle.position[1] >= self.model.highway.y_max or self.vehicle.position[1] <= self.model.highway.y_min ):
-            self.remove()
-            print("agent removed")
-            # self.model.highway.remove_agent(self)
+        # integrate a -> v
+        self.vehicle.velocity = self.vehicle.velocity + self.vehicle.acceleration * dt
+        self.vehicle.position += (self.vehicle.velocity * dt
+)
+        # bounds
+        if (self.vehicle.position[0] >= self.model.highway.x_max or self.vehicle.position[0] <= self.model.highway.x_min
+            or self.vehicle.position[1] >= self.model.highway.y_max or self.vehicle.position[1] <= self.model.highway.y_min):
             return
 
-        # Move the agent to its new location in the model
         self.model.highway.move_agent(self, self.vehicle.position)
+        self.internal_timer += 1
 
-        pass
-
-    def sense(self) -> None:
-        pass
-
-    def decide(self) -> None:
-        pass
-
+    # ---------- strategy selection ----------
     def action(self) -> None:
         from .DriveStrategies.CruiseStrategy import CruiseStrategy
         from .DriveStrategies.AccelerateStrategy import AccelerateStrategy
         from .DriveStrategies.BrakeStrategy import BrakeStrategy
 
-        self.previous_drive_strategy = copy.deepcopy(self.current_drive_strategy)
-        neighbors = self.model.highway.get_neighbors(tuple(self.vehicle.position), 2000, False)
-        # print(neighbors, flush=True)
-        
-        # Do not change the strategy if it is not time for a decision
-        if(self.internal_timer < self.decision_time):
-            pass
-        # Acclerate
-        elif (np.linalg.norm(self.vehicle.velocity) <  np.linalg.norm(self.max_speed)):
-            # self.assign_strategy(AccelerateStrategy)
-            if not isinstance(self.previous_drive_strategy, AccelerateStrategy):
-                self.current_drive_strategy = AccelerateStrategy()
-        # Brake if there is a car getting close and i sped up to them
-        elif(len(neighbors) >= 1 and np.linalg.norm(self.vehicle.velocity) >= np.linalg.norm(neighbors[0].vehicle.velocity) ):
-            # self.assign_strategy(BrakeStrategy)
-            self.current_drive_strategy = BrakeStrategy()
-            pass
+        # remember last without deepcopy
+        self.previous_drive_strategy = self.current_drive_strategy
+
+        # lead & lane
+        lead, gap = self.find_lead_and_gap(self.sensing_distance)
+        self.lead, self.gap_to_lead = lead, gap
+
+        velocity_scalar = float(np.linalg.norm(self.vehicle.velocity))
+
+        # if no lead: accelerate to max then cruise
+        print(f"{velocity_scalar=} vs {self.max_speed}")
+        if self.lead is None:
+            # no leader: accelerate up to max, then cruise
+            if velocity_scalar < self.max_speed:
+                self.assign_strategy(AccelerateStrategy)
+            else:
+                # print("cruise")
+                self.assign_strategy(CruiseStrategy)
         else:
-            # self.assign_strategy(CruiseStrategy)
-        # Cruise if there is nothing else is met
-            if not isinstance(self.previous_drive_strategy, CruiseStrategy):
-                self.current_drive_strategy = CruiseStrategy()
+            # there IS a leader
+            if self.gap_to_lead is not None and self.gap_to_lead < self.safe_follow_distance_minimum:
+                # too close → brake
+                self.assign_strategy(BrakeStrategy)
+            else:
+                # safe gap: speed back up if under max, else hold
+                if velocity_scalar < self.max_speed:
+                    self.assign_strategy(AccelerateStrategy)
+                else:
+                    # print("gap cruise")
+                    self.assign_strategy(CruiseStrategy)
 
- 
-        self.current_drive_strategy.step(self)
-
-        # if there was a change in strategy, then you have to wait for a new decision
-        if(type(self.current_drive_strategy) is not type(self.previous_drive_strategy) ):
+        # If we swithced stratefies then brake
+        if type(self.current_drive_strategy) is not type(self.previous_drive_strategy):
             self.internal_timer = -1
-        self.internal_timer += 1
-        pass
-    
-    def get_distance_to_agent(self, other:'TrafficAgent') -> int:
-        return self.model.highway.get_distance(self.vehicle.position, other.vehicle.position)
-
-    # Assign a new strategy if it is not already assigned to be that strategy
+            
+        self.current_drive_strategy.step(self)
+    # ---------- helpers ----------
     def assign_strategy(self, strategy_type: Type['DriveStrategy']):
-
-        if not isinstance(self.previous_drive_strategy, strategy_type):
+        if not isinstance(self.current_drive_strategy, strategy_type):
             self.current_drive_strategy = strategy_type()
-        return 
+        return
+
+    def lane_direction(self) -> np.ndarray:
+        lane = self.model.highway.lanes[self.lane_intent]
+        d = lane.end_position - lane.start_position
+        return d / np.linalg.norm(d)
+
+    def find_lead_and_gap(self, sense: float = 2000):
+        lane = self.model.highway.lanes[self.lane_intent]
+
+    
+
+
+        candidates = self.model.highway.get_neighbors(self.pos, sense, False)
+        # print(f"{candidates=}")
+        
+        # Get all of the agents in the same lane and and further along on the road and sort them
+        candidates = filter(lambda a: a.pos[1] > self.pos[1] and a.lane_intent == self.lane_intent, candidates )
+        candidates = sorted(candidates, key=lambda a: a.pos[1], reverse=False )
+        
+        if len(candidates) == 0:
+            return None, None
+        lead = candidates[0]
+        gap = (lead.pos[1] -  lead.vehicle.length/2) - (self.pos[1] -  self.vehicle.length/2)
+        
+
+        return lead, gap

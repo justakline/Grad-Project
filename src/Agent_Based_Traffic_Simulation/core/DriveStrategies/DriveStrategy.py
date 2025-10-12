@@ -7,5 +7,6 @@ if TYPE_CHECKING:
     from ..TrafficAgent import TrafficAgent
 
 class DriveStrategy():
+    name = "drive"
     def step(self, traffic_agent: TrafficAgent):
         pass

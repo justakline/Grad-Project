@@ -1,14 +1,18 @@
-
-from ..Highway import Highway
-from ..Vehicle import Vehicle
+import numpy as np
 from .DriveStrategy import DriveStrategy
 
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from ..TrafficAgent import TrafficAgent
-
 class AccelerateStrategy(DriveStrategy):
-    def step(self, traffic_agent: "TrafficAgent"):
-        traffic_agent.vehicle.changeVelocity(traffic_agent.vehicle.acceleration)
-        traffic_agent.vehicle.changePosition(traffic_agent.vehicle.velocity)
-        pass
+    name = 'accelerate'
+
+    def step(self, traffic_agent):
+        dt = 1.0  # ms, matches your agent step
+        v = traffic_agent.vehicle.velocity
+        speed = float(np.linalg.norm(v))
+        lane_dir = traffic_agent.lane_direction()
+
+        # accelerate toward max_speed along the lane
+        target_speed = min(traffic_agent.max_speed, speed + traffic_agent.a_max * dt)  # all in mm/ms
+        desired_v = lane_dir * target_speed
+        a = (desired_v - v) / dt  # mm/ms^2
+
+        traffic_agent.vehicle.setAcceleration(a)
