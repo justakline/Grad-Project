@@ -66,8 +66,8 @@ class TrafficAgent(Agent):
 )
         # bounds
         
-        if(self.unique_id ==4):
-            print(f"{self.pos[1]} --- max is {self.model.highway.y_max}")
+        # if(self.unique_id ==4):
+        #     print(f"{self.pos[1]} --- max is {self.model.highway.y_max}")
         
         if (self.vehicle.position[0] >= self.model.highway.x_max or self.vehicle.position[0] <= self.model.highway.x_min
             or self.vehicle.position[1] >= self.model.highway.y_max or self.vehicle.position[1] <= self.model.highway.y_min):
@@ -96,16 +96,17 @@ class TrafficAgent(Agent):
         if self.lead is None:
             # no leader: accelerate up to max, then cruise
             # print(f"{self.unique_id}")
-            if(self.unique_id ==4):
-                print("No lead")
+            # if(self.unique_id ==4):
+            #     print("No lead")
             if velocity_scalar < self.max_speed:
                 self.assign_strategy(AccelerateStrategy)
             else:
                 # print("cruise")
                 self.assign_strategy(CruiseStrategy)
         else:
-            if(self.unique_id ==4):
-                print("YES lead")
+            # if(self.unique_id ==4):
+
+            #     print("YES lead")
             # there IS a leader
             if self.gap_to_lead is not None and self.gap_to_lead < self.safe_follow_distance_minimum:
                 # too close → brake

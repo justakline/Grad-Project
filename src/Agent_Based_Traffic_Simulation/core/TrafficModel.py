@@ -6,12 +6,16 @@ from .TrafficAgent import TrafficAgent
 
 
 class TrafficModel(Model):
-    # All spatial units are in millimeters
-    # All time units are in milliseconds
+    """
+    All spatial units are in millimeters; time in milliseconds.
+    Agents spawn on lane CENTERS coming from Highway.lanes[*].start_position[0].
+    """
+
     def __init__(self, n_agents: int, seed: int, dt: int, highway: Highway):
         super().__init__(seed=seed)
         self.highway = highway
         self.steps = 0
+        self.dt = dt
 
         # Defaults for vehicle size in mm
         default_length_mm = 4500.0
@@ -21,8 +25,11 @@ class TrafficModel(Model):
             lane_intent = i % len(self.highway.lanes)
             lane = self.highway.lanes[lane_intent]
 
-            # Find a clear spawn position along this lane
-            start_position = self._find_clear_spawn(lane_intent, default_length_mm)
+            # Spawn on lane center X
+            start_position = self._find_clear_spawn(
+                lane_idx=lane_intent,
+                vehicle_length_mm=default_length_mm
+            )
             if start_position is None:
                 # Fallback if no clear spot found after N tries
                 y_fallback = random.uniform(0.0, float(self.highway.y_max) / 3.0)
@@ -39,12 +46,17 @@ class TrafficModel(Model):
                 lane_intent=lane_intent,
             )
 
-            # Place exactly once here (ensure no place/move in TrafficAgent.__init__ if you prefer single-source)
+            # Place once in the space
             self.highway.place_agent(agent, tuple(agent.vehicle.position))
 
-            # Give a small initial forward velocity to reduce clumping at t=0
+            # Initial forward velocity along the lane direction to reduce clumping at t=0
             d = lane.end_position - lane.start_position
-            d = d / np.linalg.norm(d)
+            norm = np.linalg.norm(d)
+            if norm > 0:
+                d = d / norm
+            else:
+                d = np.array([0.0, 1.0], dtype=float)
+
             init_speed = random.uniform(0.1 * agent.max_speed, 0.4 * agent.max_speed)  # mm/ms
             agent.vehicle.velocity = d * init_speed
 
@@ -52,17 +64,20 @@ class TrafficModel(Model):
 
     def step(self):
         self.agents.do("step")
+        self.steps += 1
 
     def _find_clear_spawn(self, lane_idx: int, vehicle_length_mm: float, tries: int = 50):
-        """Pick a start position on lane `lane_idx` with no nearby agents.
-        Uses Mesa get_neighbors so we avoid overlaps at t=0."""
+        """
+        Pick a start position on lane `lane_idx` with no nearby agents.
+        Uses Mesa get_neighbors so we avoid overlaps at t=0.
+        """
         lane = self.highway.lanes[lane_idx]
-        x = float(lane.start_position[0])
+        x_center = float(lane.start_position[0])  # lane center X
 
-        # at least one car length worth of spacing, with a small buffer
+        # At least one car length worth of spacing, with a small buffer
         spawn_radius_mm: float = float(vehicle_length_mm) * 1.2
 
-        # keep a small vertical margin so spawns are not right at the bounds
+        # Keep a small vertical margin so spawns are not right at the bounds
         top_margin = 500.0
         bottom_margin = 500.0
         y_min = top_margin
@@ -70,8 +85,8 @@ class TrafficModel(Model):
 
         for _ in range(tries):
             y = random.uniform(y_min, y_max)
-            pos = np.array([x, y], dtype=float)
-            if(len(self.agents)== 0):
+            pos = np.array([x_center, y], dtype=float)
+            if len(self.agents) == 0:
                 return pos
             if not self.highway.get_neighbors(tuple(pos), spawn_radius_mm, False):
                 return pos
