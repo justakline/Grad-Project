@@ -55,6 +55,9 @@ let isPanning = false,
 let showSensing = true;
 let lastAgents = [];
 
+// NEW: gate drawing until initialized
+let simReady = false;
+
 // UI helpers
 function setStatus(msg, active = false) {
   statusDiv.textContent = msg;
@@ -191,6 +194,7 @@ async function initSimulation(type) {
       laneCenters = Array.isArray(data.lane_centers)
         ? data.lane_centers.slice().sort((a, b) => a - b)
         : [];
+      simReady = true; // <— now we can draw
       resetView();
       setStatus(`${data.message}. Click Start to begin.`, true);
       startBtn.disabled = false;
@@ -231,11 +235,12 @@ async function resetSimulation() {
     if (data.status === "success") {
       simType = null;
       lastAgents = [];
+      simReady = false; // <— back to blank
       startBtn.disabled = true;
       stopBtn.disabled = true;
       stepCountSpan.textContent = "0";
       agentCountSpan.textContent = "0";
-      resetView();
+      clearCanvas(); // <— ensure blank immediately
       setStatus("Simulation reset. Initialize a new simulation.");
     }
   } catch (err) {
@@ -269,7 +274,7 @@ function clearCanvas() {
   ctx.restore();
   const dpr = window.devicePixelRatio || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = "#000";
+  ctx.fillStyle = "#000"; // blank black background
   ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 }
 
@@ -286,6 +291,7 @@ function getHighwayRect() {
 
 // Highway (lanes + shoulders)
 function drawHighway() {
+  if (!simReady) return; // <— do not draw before init
   const R = getHighwayRect();
 
   // Base asphalt
@@ -322,8 +328,9 @@ function drawHighway() {
 
   // Map to SCREEN; pin ends to rect; round internals to px
   let edgesX = edgesWorld.map((x) => worldToScreen(x, 0)[0]);
-  edgesX[0] = R.x0;
-  edgesX[edgesX.length - 1] = R.x1;
+  const R2 = getHighwayRect(); // recompute after transforms (safe)
+  edgesX[0] = R2.x0;
+  edgesX[edgesX.length - 1] = R2.x1;
   for (let i = 1; i < edgesX.length - 1; i++) edgesX[i] = Math.round(edgesX[i]);
 
   // Helper: does strip [a,b] (WORLD) overlap any lane band by >0?
@@ -335,50 +342,26 @@ function drawHighway() {
     return false;
   };
 
-  // Paint consecutive strips full height; last strip forced to R.x1
+  // Paint consecutive strips full height; last strip forced to right edge
   let sx = edgesX[0];
   for (let i = 0; i < edgesX.length - 1; i++) {
-    const next = i < edgesX.length - 2 ? edgesX[i + 1] : R.x1;
+    const next = i < edgesX.length - 2 ? edgesX[i + 1] : R2.x1;
     const w = next - sx;
     const aW = edgesWorld[i];
     const bW = edgesWorld[i + 1];
     if (w > 0) {
       const isLane = overlapsLane(aW, bW);
       ctx.fillStyle = isLane ? (i % 2 ? "#343434" : "#2c2c2c") : "#151515";
-      ctx.fillRect(sx, R.y0, w, R.h);
+      ctx.fillRect(sx, R2.y0, w, R2.h);
     }
     sx = next;
   }
-
-  // Dashed lines at lane edges (boundaries between bands)
-  ctx.save();
-  ctx.strokeStyle = "rgba(255,255,255,0.80)";
-  ctx.setLineDash([12 * s, 14 * s]);
-  ctx.lineWidth = Math.max(1, 2 * (s / (fitScale || 1)));
-
-  const edgeSet = new Set();
-  for (const [L, Rw] of laneBands) {
-    edgeSet.add(L);
-    edgeSet.add(Rw);
-  }
-  edgeSet.delete(0);
-  edgeSet.delete(maxX);
-
-  const sortedEdges = Array.from(edgeSet).sort((a, b) => a - b);
-  for (const eW of sortedEdges) {
-    const [sx0, sy0] = worldToScreen(eW, 0);
-    const [sx1, sy1] = worldToScreen(eW, maxY);
-    ctx.beginPath();
-    ctx.moveTo(sx0, sy0);
-    ctx.lineTo(sx1, sy1);
-    ctx.stroke();
-  }
-  ctx.restore();
 
   drawHighwayBorders();
 }
 
 function drawHighwayBorders() {
+  if (!simReady) return;
   ctx.save();
   ctx.strokeStyle = "#f5f5f5";
   ctx.lineWidth = Math.max(2, 3 * (s / (fitScale || 1)));
@@ -399,6 +382,7 @@ function drawHighwayBorders() {
 
 // Agents
 function drawAgents() {
+  if (!simReady) return;
   for (const a of lastAgents) {
     const [px, py] = worldToScreen(a.x, a.y);
     const halfL = Math.max(0.5, (a.length * s - 1) / 2);
@@ -447,6 +431,7 @@ function drawAgents() {
 
 // Paint black outside the highway instead of clipping
 function maskOutsideHighway() {
+  if (!simReady) return; // blank means no masking either
   const R = getHighwayRect();
   const W = canvas.width / (window.devicePixelRatio || 1);
   const H = canvas.height / (window.devicePixelRatio || 1);
@@ -460,10 +445,11 @@ function maskOutsideHighway() {
 // Main redraw
 function redraw() {
   clearCanvas();
+  if (!simReady) return; // keep it blank until init succeeds
   drawHighway();
   drawAgents();
   maskOutsideHighway();
 }
 
-// Boot
+// Boot (blank on load)
 layoutPreserveCenter();

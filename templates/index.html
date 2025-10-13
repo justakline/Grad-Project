@@ -18,32 +18,32 @@
 
       <div class="controls">
         <div class="row">
-          <button class="btn-traffic" onclick="initSimulation('traffic')">
-            Initialize Traffic
-          </button>
-          <button class="btn-demo" onclick="initSimulation('demo')">
-            Initialize Demo
-          </button>
-          <button
-            class="btn-start"
-            id="startBtn"
-            onclick="startSimulation()"
-            disabled
-          >
-            Start
-          </button>
-          <button
-            class="btn-stop"
-            id="stopBtn"
-            onclick="stopSimulation()"
-            disabled
-          >
-            Stop
-          </button>
-          <button class="btn-reset" onclick="resetSimulation()">Reset</button>
-          <button id="toggleSense">Sensing: On</button>
-
-          <div class="spacer"></div>
+          <div class="upper-wrap">
+            <button class="btn-traffic" onclick="initSimulation('traffic')">
+              Initialize Traffic
+            </button>
+            <button class="btn-demo" onclick="initSimulation('demo')">
+              Initialize Demo
+            </button>
+            <button
+              class="btn-start"
+              id="startBtn"
+              onclick="startSimulation()"
+              disabled
+            >
+              Start
+            </button>
+            <button
+              class="btn-stop"
+              id="stopBtn"
+              onclick="stopSimulation()"
+              disabled
+            >
+              Stop
+            </button>
+            <button class="btn-reset" onclick="resetSimulation()">Reset</button>
+            <button id="toggleSense">Sensing: On</button>
+          </div>
 
           <div class="zoom-wrap">
             <button id="zoomOutBtn" title="Zoom Out">−</button>
