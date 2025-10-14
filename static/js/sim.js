@@ -403,13 +403,17 @@ function drawAgents() {
       ctx.restore();
     }
 
-    const color =
+    var color =
       {
         hard_brake: "#ef4444",
         brake: "#f77926",
         accelerate: "#22c55e",
         cruise: "#eab308",
       }[a.drive_strategy] || "#ffffff";
+
+      if(a.id == 4){
+        color = '#1703fc'
+      }
     ctx.save();
     ctx.translate(px, py);
     const heading = simType === "traffic" ? -a.heading : a.heading;
@@ -418,6 +422,7 @@ function drawAgents() {
     ctx.strokeStyle = "#111";
     ctx.lineWidth = 1;
     ctx.beginPath();
+    
     ctx.rect(-halfL, -halfW, 2 * halfL, 2 * halfW);
     ctx.fill();
     ctx.stroke();

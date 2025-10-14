@@ -5,13 +5,7 @@ from typing import List
 
 
 class Highway(ContinuousSpace):
-    """
-    Highway coordinate system (millimeters).
-    Lanes are centered within [0, x_max] using:
-        shoulder = (x_max - lane_count * lane_width) / 2
-        center_i = shoulder + (i + 0.5) * lane_width
-    Each Lane's start/end x is the lane CENTER (vertical lane).
-    """
+
 
     def __init__(self, x_max: int, y_max: int, torus: bool, lane_count: int, lane_width: int):
         super().__init__(x_max, y_max, torus)
@@ -22,6 +16,7 @@ class Highway(ContinuousSpace):
         self.lane_width: float = float(lane_width)
 
         total_lane_w = self.lane_count * self.lane_width
+
         # If total lanes are wider than highway, clamp shoulder at 0 (still draw; caller should fix sizes)
         shoulder = max(0.0, (self.x_max - total_lane_w) / 2.0)
 
@@ -40,7 +35,7 @@ class Highway(ContinuousSpace):
             )
             self.lanes.append(lane)
 
-    # Convenience accessors (useful if you want to export to the frontend)
+    # Methods for the front end
     def get_lane_centers(self) -> List[float]:
         return list(self.lane_centers)
 
