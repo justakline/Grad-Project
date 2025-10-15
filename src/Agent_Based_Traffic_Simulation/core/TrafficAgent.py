@@ -4,11 +4,13 @@ from typing import TYPE_CHECKING, Type
 import numpy as np
 from mesa import Agent
 
+# from Agent_Based_Traffic_Simulation.core.DriveStrategies import AbstractDriveStrategy
+
 from . import TrafficModel
 from .Vehicle import Vehicle
 
 if TYPE_CHECKING:
-    from .DriveStrategies.DriveStrategy import DriveStrategy
+    from .DriveStrategies.AbstractDriveStrategy import AbstractDriveStrategy
 
 
 class TrafficAgent(Agent):
@@ -118,7 +120,7 @@ class TrafficAgent(Agent):
             
         self.current_drive_strategy.step(self)
     # ---------- helpers ----------
-    def assign_strategy(self, strategy_type: Type['DriveStrategy']):
+    def assign_strategy(self, strategy_type: Type['AbstractDriveStrategy']): # type: ignore
         if not isinstance(self.current_drive_strategy, strategy_type):
             self.current_drive_strategy = strategy_type()
         return

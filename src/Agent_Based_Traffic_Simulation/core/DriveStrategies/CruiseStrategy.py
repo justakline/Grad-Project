@@ -1,7 +1,7 @@
 import numpy as np
-from .DriveStrategy import DriveStrategy
+from .AbstractDriveStrategy import AbstractDriveStrategy
 
-class CruiseStrategy(DriveStrategy):
+class CruiseStrategy(AbstractDriveStrategy):
     name = 'cruise'
     def step(self, traffic_agent):
         # hold speed; zero acceleration

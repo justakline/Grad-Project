@@ -23,6 +23,6 @@ class Vehicle:
     def get_scaler(self, vector: np.array):
         return np.linalg.norm(vector)
 
-    def setAcceleration(self, new_a):
+    def setAcceleration(self, new_a: np.array):
         # absolute set, not incremental
         self.acceleration = np.array(new_a, dtype=float)

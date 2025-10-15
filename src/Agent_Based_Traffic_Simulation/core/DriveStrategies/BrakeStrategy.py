@@ -1,9 +1,9 @@
 # BrakeStrategy.py
 import numpy as np
-from .DriveStrategy import DriveStrategy
-from .AccelerateStrategy import AccelerateStrategy
 
-class BrakeStrategy(DriveStrategy):
+from .AbstractDriveStrategy import AbstractDriveStrategy
+
+class BrakeStrategy(AbstractDriveStrategy):
     name = "brake"
 
     def step(self, traffic_agent):

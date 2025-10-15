@@ -1,14 +1,14 @@
 
 from ..Highway import Highway
 from ..Vehicle import Vehicle
-from .DriveStrategy import DriveStrategy
+from .AbstractDriveStrategy import AbstractDriveStrategy
 
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..TrafficAgent import TrafficAgent
 
-class HardBrakeStrategy(DriveStrategy):
+class HardBrakeStrategy(AbstractDriveStrategy):
     name = "hard_brake"
     def step(self, traffic_agent: "TrafficAgent"):
         
