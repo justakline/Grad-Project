@@ -61,15 +61,23 @@ class TrafficAgent(Agent):
         self.action()
 
         self.vehicle.velocity = self.vehicle.velocity + self.vehicle.acceleration * dt
+
+
+
         self.vehicle.position += (self.vehicle.velocity * dt)
     
         # if(self.unique_id ==4):
         #     print(f"{self.pos[1]} --- max is {self.model.highway.y_max}")
         
         # Out of bounds of the highwa
+        if(self.unique_id == 4):
+            print(f"{self.vehicle.position[1]=} {self.model.highway.y_max=}")
+
         if (self.vehicle.position[0] >= self.model.highway.x_max or self.vehicle.position[0] <= self.model.highway.x_min
             or self.vehicle.position[1] >= self.model.highway.y_max or self.vehicle.position[1] <= self.model.highway.y_min):
-            self.model.deregister_agent(self)
+            # self.model.deregister_agent(self)
+            print("removed")
+            self.remove()
             return
 
         self.model.highway.move_agent(self, self.vehicle.position)
@@ -127,7 +135,8 @@ class TrafficAgent(Agent):
 
     def current_lane_vector(self) -> np.ndarray:
         lane = self.model.highway.lanes[self.lane_intent]
-        d = lane.end_position - lane.start_position
+        # d = lane.end_position - lane.start_position
+        d = lane.end_position - self.vehicle.position
         return d / np.linalg.norm(d)
 
     def find_lead_and_gap(self, sense: float = 2000):
@@ -137,17 +146,22 @@ class TrafficAgent(Agent):
 
 
         candidates = self.model.highway.get_neighbors(self.pos, sense, False)
-        # if(self.unique_id ==4):
-        # print(f"{candidates=}")
         
         # Get all of the agents in the same lane and and further along on the road and sort them
         candidates = filter(lambda a: a.pos[1] > self.pos[1] and a.lane_intent == self.lane_intent, candidates )
         candidates = sorted(candidates, key=lambda a: a.pos[1], reverse=False )
         
+        if(self.unique_id ==4):
+            can = list(map(lambda a : a.unique_id,candidates))
+            print(f"{can=}")
         if len(candidates) == 0:
             return None, None
         lead = candidates[0]
+
         gap = (lead.pos[1] -  lead.vehicle.length/2) - (self.pos[1] +  self.vehicle.length/2)
         
 
         return lead, gap
+    
+    def get_scalar(self, vec: np.array) -> float:
+        return np.linalg.norm(vec)

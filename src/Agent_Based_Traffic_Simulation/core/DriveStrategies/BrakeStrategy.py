@@ -14,46 +14,26 @@ class BrakeStrategy(AbstractDriveStrategy):
         leader_speed = float(numpy.linalg.norm(traffic_agent.lead.vehicle.velocity))
         closing_speed = vehicle_speed - leader_speed  # > 0 means we are faster
 
+
+
         # Distances and timing (mm, ms)
         gap_distance = float(traffic_agent.gap_to_lead)
         minimum_follow_distance = float(traffic_agent.smallest_follow_distance)
-        hard_brake_distance = float(traffic_agent.hard_brake_distance_start)
-        time_step_milliseconds = float(traffic_agent.model.dt)
+        hard_brake_distance_start = float(traffic_agent.hard_brake_distance_start)
+        dt = float(traffic_agent.model.dt)
 
-        # Not in hard zone, not closing, or not moving
-        if gap_distance >= hard_brake_distance or closing_speed <= 0.0 or vehicle_speed == 0.0:
+        # We are going slower than the car in front of us
+        if(closing_speed <= 0):
             return
+        
+        if (gap_distance < minimum_follow_distance):
+            traffic_agent.vehicle.velocity = np.array([0,0])
 
-        # Longitudinal direction
-        direction_longitudinal = traffic_agent.vehicle.velocity / vehicle_speed
-
-
-        # Candidate constant deceleration
-        if gap_distance > minimum_follow_distance:
-            # Match leader speed exactly when the gap reaches the minimum follow distance
-            # a = - (Δv)^2 / (2 * (gap - s_min))
-            acceleration_candidate = - (closing_speed * closing_speed) / (2.0 * (gap_distance - minimum_follow_distance))
-        else:
-            # Already at or inside the minimum follow distance. Land exactly on it next step
-            # s_min = s - Δv*t - 0.5*a*t^2  =>  a = 2*(s - s_min - Δv*t)/t^2
-            t = time_step_milliseconds
-            acceleration_candidate = 2.0 * (gap_distance - minimum_follow_distance - closing_speed * t) / (t * t)
-            acceleration_candidate = min(acceleration_candidate, 0.0)  # braking only
-
-        # Safety clamps so we never reverse and do not go below the leader speed in the next tick
-        min_acceleration_to_match_leader_next = (leader_speed - vehicle_speed) / time_step_milliseconds
-        min_acceleration_to_avoid_reverse = -vehicle_speed / time_step_milliseconds
-
-        acceleration_command = max(
-            acceleration_candidate,
-            min_acceleration_to_match_leader_next,
-            min_acceleration_to_avoid_reverse
-        )
-        acceleration_command = min(acceleration_command, 0.0)  # braking only
         
 
         # Apply along current motion
-        traffic_agent.vehicle.setAcceleration(acceleration_command * direction_longitudinal)
+        # traffic_agent.vehicle.setAcceleration(new_acceleration)
+
 
 
 
