@@ -8,11 +8,23 @@ class AccelerateStrategy(AbstractDriveStrategy):
         dt = traffic_agent.model.dt 
         v = traffic_agent.vehicle.velocity
         speed = float(np.linalg.norm(v))
+        max_speed = float(traffic_agent.max_speed)
+        acceleration_increase = traffic_agent.acceleration_increase
         lane_dir = traffic_agent.current_lane_vector()
+        
+        
 
-        # accelerate toward max_speed along the lane
-        target_speed = min(traffic_agent.max_speed, speed + traffic_agent.acceleration_increase * dt)  
-        desired_v = lane_dir * target_speed
+        old_acceleration_vector = traffic_agent.vehicle.acceleration
+        old_acceleration_scalar = np.linalg.norm(old_acceleration_vector)
+        if(old_acceleration_scalar == 0):
+            traffic_agent.vehicle.setAcceleration(lane_dir + np.array([0, acceleration_increase * dt * dt]))
+            return
 
-        acceleration_increase = (desired_v - v) / dt  # mm/ms^2
-        traffic_agent.vehicle.setAcceleration(acceleration_increase)
+
+        old_acceleration_unit_vector  = old_acceleration_vector/old_acceleration_scalar
+        new_acceleration_scalar = old_acceleration_scalar + acceleration_increase
+        new_acceleration_vector = old_acceleration_unit_vector * new_acceleration_scalar
+
+
+
+        traffic_agent.vehicle.setAcceleration(new_acceleration_vector*dt*dt)

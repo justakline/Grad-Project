@@ -25,13 +25,13 @@ class TrafficAgent(Agent):
 
         # dynamics and sensing (mm, ms)
         self.max_speed = random.uniform(200, 350)   # mm/ms
-        self.sensing_distance = 12_000             # mm
+        self.sensing_distance = random.uniform(5000, 15000)            # mm 12_000 mm
 
         # control params
         self.acceleration_increase = 3.00         # mm/ms^2
         self.b_max = 4.004         # mm/ms^2
         self.time_headway = 1.2  # seconds (⚠ multiply speeds by 1000)
-        self.smallest_follow_distance = 500    # mm floor
+        self.smallest_follow_distance = 10_00    # mm floor
         self.slow_brake_distance_start = 12_000 #12 meters distance we start to brake
         self.hard_brake_distance_start = 5_000  #5 meters distance we start to brake hard
 
@@ -70,12 +70,13 @@ class TrafficAgent(Agent):
         #     print(f"{self.pos[1]} --- max is {self.model.highway.y_max}")
         
         # Out of bounds of the highwa
-        if(self.unique_id == 4):
-            print(f"{self.vehicle.position[1]=} {self.model.highway.y_max=}")
+        # if(self.unique_id == 4):
+        #     print(f"{self.vehicle.position[1]=} {self.model.highway.y_max=}")
 
         if (self.vehicle.position[0] >= self.model.highway.x_max or self.vehicle.position[0] <= self.model.highway.x_min
             or self.vehicle.position[1] >= self.model.highway.y_max or self.vehicle.position[1] <= self.model.highway.y_min):
             # self.model.deregister_agent(self)
+            
             print("removed")
             self.remove()
             return
@@ -102,16 +103,22 @@ class TrafficAgent(Agent):
             # if(self.unique_id ==4):
             #     print("No lead")
             if velocity_scalar < self.max_speed:
+                if(self.unique_id == 4):
+                    print(f"{velocity_scalar} {self.max_speed=}")
                 self.assign_strategy(AccelerateStrategy)
             else:
                 # print("cruise")
                 self.assign_strategy(CruiseStrategy)
         else:
-            # if(self.unique_id ==4):
-
-            #     print("YES lead")
             # there IS a leader
-            if self.gap_to_lead is not None:
+            # if(self.unique_id ==4):
+            #     print("YES lead")
+
+            # If the car in front of us is faster or the same speed then just stay the same speed
+            if(np.linalg.norm(self.lead.vehicle.velocity) >= np.linalg.norm(self.vehicle.velocity) ):
+                self.assign_strategy(CruiseStrategy)
+
+            elif self.gap_to_lead is not None:
                 # too close → brake
                 self.assign_strategy(BrakeStrategy)
             # else:
@@ -153,7 +160,6 @@ class TrafficAgent(Agent):
         
         if(self.unique_id ==4):
             can = list(map(lambda a : a.unique_id,candidates))
-            print(f"{can=}")
         if len(candidates) == 0:
             return None, None
         lead = candidates[0]

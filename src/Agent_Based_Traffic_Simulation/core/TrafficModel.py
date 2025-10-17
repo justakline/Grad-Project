@@ -28,12 +28,15 @@ class TrafficModel(Model):
             # Spawn on lane center X
             start_position = self._find_clear_spawn(
                 lane_idx=lane_intent,
-                vehicle_length_mm=default_length_mm
+                vehicle_length_mm=default_length_mm,
+                tries=150
             )
             if start_position is None:
+                # There are no more open spots so we can not add any more into the sim
+                break
                 # Fallback if no clear spot found after N tries
-                y_fallback = random.uniform(0.0, float(self.highway.y_max) / 3.0)
-                start_position = np.array([float(lane.start_position[0]), y_fallback], dtype=float)
+                # y_fallback = random.uniform(0.0, float(self.highway.y_max) / 3.0)
+                # start_position = np.array([float(lane.start_position[0]), y_fallback], dtype=float)
 
             end_position = lane.end_position.copy()
 
@@ -88,7 +91,9 @@ class TrafficModel(Model):
             pos = np.array([x_center, y], dtype=float)
             if len(self.agents) == 0:
                 return pos
-            if not self.highway.get_neighbors(tuple(pos), spawn_radius_mm, False):
+            # Get the neighbors that are in the same lane
+            neighbors:list = list(filter( lambda a: a.lane_intent == lane_idx,self.highway.get_neighbors(tuple(pos), spawn_radius_mm, False)))
+            if  len(neighbors) ==0 :
                 return pos
 
         return None  # could not find a clear spot
