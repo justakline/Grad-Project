@@ -22,11 +22,13 @@ class CruiseStrategy(AbstractDriveStrategy):
         acceleration_clipped = np.clip(acceleration_raw, -1*braking_comfortable, max_accel)
 
         # No backwards movement when at a standstill
-        if(acceleration_clipped <= 0 or current_v < e ):
+        if(acceleration_clipped <= 0 and current_v < e ):
             acceleration_clipped = 0
 
         direction = traffic_agent.current_lane_vector()
         new_acceleration = change_magnitude(direction, acceleration_clipped)
+
+        print(f"{new_acceleration=}")
         traffic_agent.vehicle.setAcceleration(new_acceleration)
     
 

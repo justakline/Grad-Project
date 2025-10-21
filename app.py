@@ -39,7 +39,7 @@ def init_simulation(sim_type):
             highway_lanes = 2
             lane_size = 3657
             highway_width = highway_lanes * lane_size * 1.01 # 1.01 due to index out of bounds exceptions
-            dt = 30 #ms
+            dt = 20 #ms
             
             # Highway units are millimeters
             highway = Highway(highway_width, highway_length, False, highway_lanes, lane_size)
@@ -107,9 +107,9 @@ def step_simulation():
                     'id': agent.unique_id,
                     'x': x,                # mm
                     'y': y,                # mm
-                    'vx': vx/dt,              # mm/ms
-                    'vy': vy/dt,              # mm/ms
-                    'speed': speed/dt,        # mm/ms
+                    'vx': vx,              # mm/ms
+                    'vy': vy,              # mm/ms
+                    'speed': speed,        # mm/ms
                     'length': length_mm,   # mm
                     'width': width_mm,     # mm
                     'heading': heading,    # radians
@@ -124,7 +124,7 @@ def step_simulation():
                     'y': float(agent.pos[1])
                 })
         avg_speed /= len(simulation_model.agents)
-        avg_speed *= 2.23694 /dt #convert to miles per hour
+        avg_speed *= 2.23694   #convert to miles per hour
         total_time = simulation_model.total_time / 1000 #convert to seconds
         aggregate_data.append({
             'avg_speed': round(float(avg_speed), 2),

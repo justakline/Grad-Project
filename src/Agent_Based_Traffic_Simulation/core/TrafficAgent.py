@@ -26,15 +26,15 @@ class TrafficAgent(Agent):
         self.lane_intent = lane_intent
 
         # dynamics and sensing (mm, ms)
-        self.max_speed = random.uniform(25, 35) *dt   # mm/ms
+        self.max_speed = random.uniform(35, 45)    # mm/ms
         self.sensing_distance = random.uniform(5000, 15000)            # mm 12_000 mm
 
 
         self.desired_speed = random.uniform(0.8, 0.95) * self.max_speed
-        self.max_acceleration = random.uniform(0.0015, 0.003) *dt
-        self.cruise_gain = random.uniform(0.0007, 0.0015) *dt
+        self.max_acceleration = random.uniform(0.0015, 0.003)  # mm/ms^2
+        self.cruise_gain = random.uniform(0.0007, 0.0015) * dt # 1/ms
 
-        self.braking_comfortable = random.uniform(0.002, 0.004) *dt
+        self.braking_comfortable = random.uniform(0.002, 0.004) 
 
 
 
@@ -64,16 +64,19 @@ class TrafficAgent(Agent):
 
         # small initial push along lane
         self.vehicle.velocity = self.current_lane_vector() * self.desired_speed
+        print(self.current_lane_vector())
+        print(self.vehicle.velocity)
+    
         # self.vehicle.changeAcceleration(self.current_lane_vector() * random.uniform(0.002, 0.008))
 
     # ---------- tick ----------
     def step(self) -> None:
-        dt = 1.0  # ms
+        dt = self.model.dt  # ms
         # self.sense()
 
         # decide -> set acceleration
         self.action()
-
+        print(f"{self.vehicle.velocity}")
         self.vehicle.velocity = self.vehicle.velocity + self.vehicle.acceleration * dt
 
 

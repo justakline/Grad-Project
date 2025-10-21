@@ -53,16 +53,6 @@ class TrafficModel(Model):
             # Place once in the space
             self.highway.place_agent(agent, tuple(agent.vehicle.position))
 
-            # Initial forward velocity along the lane direction to reduce clumping at t=0
-            d = lane.end_position - lane.start_position
-            norm = np.linalg.norm(d)
-            if norm > 0:
-                d = d / norm
-            else:
-                d = np.array([0.0, 1.0], dtype=float)
-
-            init_speed = random.uniform(0.1 * agent.max_speed, 0.4 * agent.max_speed)  # mm/ms
-            agent.vehicle.velocity = d * init_speed
 
             self.agents.add(agent)
 
