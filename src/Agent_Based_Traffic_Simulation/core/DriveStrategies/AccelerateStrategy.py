@@ -1,35 +1,30 @@
 import numpy as np
-from ..Utils import to_unit, change_magnitude, e
+from ..Utils import to_unit, change_magnitude, EPS
 from .AbstractDriveStrategy import AbstractDriveStrategy
 
 
 class AccelerateStrategy(AbstractDriveStrategy):
-    name = 'accelerate'
+    name = "accelerate"
+
     def step(self, traffic_agent):
-        
-       
-        
-        
-        dt = traffic_agent.model.dt 
-        v = traffic_agent.vehicle.velocity
-        speed = float(np.linalg.norm(v))
-        max_speed = float(traffic_agent.max_speed)
-        acceleration_increase = traffic_agent.acceleration_increase
-        lane_dir = traffic_agent.current_lane_vector()
-        
-        
+        dt = traffic_agent.model.dt
+        direction = traffic_agent.current_lane_vector()
+        current_speed = float(np.linalg.norm(traffic_agent.vehicle.velocity))
+        desired_speed = float(traffic_agent.desired_speed)
 
-        old_acceleration_vector = traffic_agent.vehicle.acceleration
-        old_acceleration_scalar = np.linalg.norm(old_acceleration_vector)
-        if(old_acceleration_scalar == 0):
-            traffic_agent.vehicle.setAcceleration(lane_dir + np.array([0, acceleration_increase * dt * dt]))
-            return
+        # reuse the same gain profile as cruise, but never decelerate
+        cruise_gain = float(traffic_agent.cruise_gain)
+        acceleration_raw = cruise_gain * (desired_speed - current_speed)
+        acceleration_raw = max(0.0, acceleration_raw)  # only accelerate
 
+        max_accel = float(traffic_agent.max_acceleration)
 
-        old_acceleration_unit_vector  = old_acceleration_vector/old_acceleration_scalar
-        new_acceleration_scalar = old_acceleration_scalar + acceleration_increase
-        new_acceleration_vector = old_acceleration_unit_vector * new_acceleration_scalar
+        # final accel bounded to [0, max_accel]
+        acceleration_clipped = np.clip(acceleration_raw, 0.0, max_accel)
 
+        # if nearly stopped, do not allow tiny negative due to numerics
+        if acceleration_clipped <= 0.0 and current_speed < EPS:
+            acceleration_clipped = 0.0
 
-
-        traffic_agent.vehicle.setAcceleration(new_acceleration_vector*dt*dt)
+        new_acceleration = change_magnitude(direction, acceleration_clipped)
+        traffic_agent.vehicle.setAcceleration(new_acceleration)

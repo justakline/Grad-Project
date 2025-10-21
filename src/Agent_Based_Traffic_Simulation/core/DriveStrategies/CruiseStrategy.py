@@ -1,6 +1,6 @@
 import numpy as np
 from .AbstractDriveStrategy import AbstractDriveStrategy
-from ..Utils import to_unit, change_magnitude,  e
+from ..Utils import to_unit, change_magnitude,  EPS
 
 
 # The idea of cruising is trying to get back to your "desired cruising speed and stay there"
@@ -22,13 +22,12 @@ class CruiseStrategy(AbstractDriveStrategy):
         acceleration_clipped = np.clip(acceleration_raw, -1*braking_comfortable, max_accel)
 
         # No backwards movement when at a standstill
-        if(acceleration_clipped <= 0 and current_v < e ):
+        if(acceleration_clipped <= 0 and current_v < EPS ):
             acceleration_clipped = 0
 
         direction = traffic_agent.current_lane_vector()
         new_acceleration = change_magnitude(direction, acceleration_clipped)
 
-        print(f"{new_acceleration=}")
         traffic_agent.vehicle.setAcceleration(new_acceleration)
     
 
