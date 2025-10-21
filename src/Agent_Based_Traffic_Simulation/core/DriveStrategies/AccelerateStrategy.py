@@ -1,10 +1,15 @@
 import numpy as np
+from ..Utils import to_unit, change_magnitude, e
 from .AbstractDriveStrategy import AbstractDriveStrategy
+
 
 class AccelerateStrategy(AbstractDriveStrategy):
     name = 'accelerate'
-
     def step(self, traffic_agent):
+        
+       
+        
+        
         dt = traffic_agent.model.dt 
         v = traffic_agent.vehicle.velocity
         speed = float(np.linalg.norm(v))

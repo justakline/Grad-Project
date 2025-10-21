@@ -2,6 +2,7 @@ import random
 from typing import TYPE_CHECKING, Type
 
 import numpy as np
+from .Utils import to_unit
 from mesa import Agent
 
 # from Agent_Based_Traffic_Simulation.core.DriveStrategies import AbstractDriveStrategy
@@ -19,13 +20,25 @@ class TrafficAgent(Agent):
     def __init__(self, model: TrafficModel, position: np.ndarray, goal: np.ndarray,
                  length: float, width: float, lane_intent: int):
         super().__init__(model)
+        dt = model.dt
         self.vehicle: Vehicle = Vehicle(position, length, width)
         self.goal: np.ndarray = goal
         self.lane_intent = lane_intent
 
         # dynamics and sensing (mm, ms)
-        self.max_speed = random.uniform(200, 350)   # mm/ms
+        self.max_speed = random.uniform(25, 35) *dt   # mm/ms
         self.sensing_distance = random.uniform(5000, 15000)            # mm 12_000 mm
+
+
+        self.desired_speed = random.uniform(0.8, 0.95) * self.max_speed
+        self.max_acceleration = random.uniform(0.0015, 0.003) *dt
+        self.cruise_gain = random.uniform(0.0007, 0.0015) *dt
+
+        self.braking_comfortable = random.uniform(0.002, 0.004) *dt
+
+
+
+
 
         # control params
         self.acceleration_increase = 3.00         # mm/ms^2
@@ -50,7 +63,8 @@ class TrafficAgent(Agent):
         self.internal_timer = self.decision_time
 
         # small initial push along lane
-        self.vehicle.changeAcceleration(self.current_lane_vector() * random.uniform(0.002, 0.008))
+        self.vehicle.velocity = self.current_lane_vector() * self.desired_speed
+        # self.vehicle.changeAcceleration(self.current_lane_vector() * random.uniform(0.002, 0.008))
 
     # ---------- tick ----------
     def step(self) -> None:
@@ -97,37 +111,37 @@ class TrafficAgent(Agent):
         velocity_scalar = float(np.linalg.norm(self.vehicle.velocity))
 
         # if no lead: accelerate to max then cruise
-        if self.lead is None:
-            # no leader: accelerate up to max, then cruise
-            # print(f"{self.unique_id}")
-            # if(self.unique_id ==4):
-            #     print("No lead")
-            if velocity_scalar < self.max_speed:
-                if(self.unique_id == 4):
-                    print(f"{velocity_scalar} {self.max_speed=}")
-                self.assign_strategy(AccelerateStrategy)
-            else:
-                # print("cruise")
-                self.assign_strategy(CruiseStrategy)
-        else:
-            # there IS a leader
-            # if(self.unique_id ==4):
-            #     print("YES lead")
+        # if self.lead is None:
+        #     # no leader: accelerate up to max, then cruise
+        #     # print(f"{self.unique_id}")
+        #     # if(self.unique_id ==4):
+        #     #     print("No lead")
+        #     if velocity_scalar < self.max_speed:
+        #         if(self.unique_id == 4):
+        #             print(f"{velocity_scalar} {self.max_speed=}")
+        #         self.assign_strategy(AccelerateStrategy)
+        #     else:
+        #         # print("cruise")
+        #         self.assign_strategy(CruiseStrategy)
+        # else:
+        #     # there IS a leader
+        #     # if(self.unique_id ==4):
+        #     #     print("YES lead")
 
-            # If the car in front of us is faster or the same speed then just stay the same speed
-            if(np.linalg.norm(self.lead.vehicle.velocity) >= np.linalg.norm(self.vehicle.velocity) ):
-                self.assign_strategy(CruiseStrategy)
+        #     # If the car in front of us is faster or the same speed then just stay the same speed
+        #     if(np.linalg.norm(self.lead.vehicle.velocity) >= np.linalg.norm(self.vehicle.velocity) ):
+        #         self.assign_strategy(CruiseStrategy)
 
-            elif self.gap_to_lead is not None:
-                # too close → brake
-                self.assign_strategy(BrakeStrategy)
-            # else:
-            #     # safe gap: speed back up if under max, else hold
-            #     if velocity_scalar < self.max_speed:
-            #         self.assign_strategy(AccelerateStrategy)
-            #     else:
-            #         # print("gap cruise")
-            #         self.assign_strategy(CruiseStrategy)
+        #     elif self.gap_to_lead is not None:
+        #         # too close → brake
+        #         self.assign_strategy(BrakeStrategy)
+        #     # else:
+        #     #     # safe gap: speed back up if under max, else hold
+        #     #     if velocity_scalar < self.max_speed:
+        #     #         self.assign_strategy(AccelerateStrategy)
+        #     #     else:
+        #     #         # print("gap cruise")
+        #     #         self.assign_strategy(CruiseStrategy)
 
         # If we switched strategies, then reset the timer so we have to wait to make another decision
         if type(self.current_drive_strategy) is not type(self.previous_drive_strategy):
@@ -144,7 +158,8 @@ class TrafficAgent(Agent):
         lane = self.model.highway.lanes[self.lane_intent]
         # d = lane.end_position - lane.start_position
         d = lane.end_position - self.vehicle.position
-        return d / np.linalg.norm(d)
+        
+        return to_unit(d)
 
     def find_lead_and_gap(self, sense: float = 2000):
         lane = self.model.highway.lanes[self.lane_intent]
@@ -171,3 +186,4 @@ class TrafficAgent(Agent):
     
     def get_scalar(self, vec: np.array) -> float:
         return np.linalg.norm(vec)
+    

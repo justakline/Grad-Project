@@ -6,6 +6,7 @@ const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const stepCountSpan = document.getElementById("stepCount");
 const agentCountSpan = document.getElementById("agentCount");
+const aggregateData = document.getElementById("aggregateData")
 const viewport = document.getElementById("viewport");
 const vwInput = document.getElementById("vwInput");
 const vhInput = document.getElementById("vhInput");
@@ -240,6 +241,7 @@ async function resetSimulation() {
       stopBtn.disabled = true;
       stepCountSpan.textContent = "0";
       agentCountSpan.textContent = "0";
+      aggregateData.textContent = "0"
       clearCanvas(); // <— ensure blank immediately
       setStatus("Simulation reset. Initialize a new simulation.");
     }
@@ -256,9 +258,21 @@ async function stepSimulation() {
       redraw();
       stepCountSpan.textContent = data.step;
       agentCountSpan.textContent = data.agents.length;
-    } else {
+      console.log(data)
+      var aggData = ""
+      for (const d of data.aggregateData){
+        for (const key of Object.keys(d)){
+
+          aggData += "| "+ key + ": " + d[key] + " " 
+          // console.log(key)
+        }
+      }
+      aggregateData.textContent = aggData
+    }else{
       setStatus(`Error: ${data.message}`);
+
       stopSimulation();
+
     }
   } catch (err) {
     setStatus(`Error: ${err.message}`);

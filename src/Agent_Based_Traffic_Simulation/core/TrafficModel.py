@@ -16,6 +16,7 @@ class TrafficModel(Model):
         self.highway = highway
         self.steps = 0
         self.dt = dt
+        self.total_time = 0
 
         # Defaults for vehicle size in mm
         default_length_mm = 4500.0
@@ -68,6 +69,7 @@ class TrafficModel(Model):
     def step(self):
         self.agents.do("step")
         self.steps += 1
+        self.total_time +=self.dt
 
     def _find_clear_spawn(self, lane_idx: int, vehicle_length_mm: float, tries: int = 50):
         """

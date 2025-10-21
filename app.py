@@ -7,6 +7,7 @@ from flask import Flask, render_template, jsonify
 from flask_cors import CORS
 import traceback
 
+import numpy as np
 import logging
 logging.getLogger("werkzeug").setLevel(logging.ERROR)
 logging.getLogger("werkzeug").disabled = True
@@ -38,10 +39,11 @@ def init_simulation(sim_type):
             highway_lanes = 2
             lane_size = 3657
             highway_width = highway_lanes * lane_size * 1.01 # 1.01 due to index out of bounds exceptions
+            dt = 30 #ms
             
             # Highway units are millimeters
             highway = Highway(highway_width, highway_length, False, highway_lanes, lane_size)
-            simulation_model = TrafficModel(40,1, 1, highway)
+            simulation_model = TrafficModel(40,1, dt, highway)
             simulation_type = 'traffic'
             return jsonify({
                 'status': 'success',
@@ -81,6 +83,8 @@ def step_simulation():
         simulation_model.step()
 
         agents_data = []
+        aggregate_data = []
+        avg_speed = 0
         for agent in simulation_model.agents:
             if simulation_type == 'traffic':
                 # Real-world values straight from the model (mm, mm/ms)
@@ -88,7 +92,7 @@ def step_simulation():
                 y = float(agent.vehicle.position[1])
                 vx = float(agent.vehicle.velocity[0])
                 vy = float(agent.vehicle.velocity[1])
-                speed = (vx**2 + vy**2) ** 0.5
+                speed = np.linalg.norm(agent.vehicle.velocity)
                 length_mm = float(agent.vehicle.length)  # already mm
                 width_mm = float(agent.vehicle.width)    # already mm
                 # Heading in radians from velocity; fall back to lane direction if stopped
@@ -98,30 +102,39 @@ def step_simulation():
                     lane = simulation_model.highway.lanes[agent.lane_intent]
                     dx, dy = (lane.end_position - lane.start_position)
                     heading = math.atan2(float(dy), float(dx))
-
+                dt = simulation_model.dt
                 agents_data.append({
                     'id': agent.unique_id,
                     'x': x,                # mm
                     'y': y,                # mm
-                    'vx': vx,              # mm/ms
-                    'vy': vy,              # mm/ms
-                    'speed': speed,        # mm/ms
+                    'vx': vx/dt,              # mm/ms
+                    'vy': vy/dt,              # mm/ms
+                    'speed': speed/dt,        # mm/ms
                     'length': length_mm,   # mm
                     'width': width_mm,     # mm
                     'heading': heading,    # radians
                     'drive_strategy': getattr(agent.current_drive_strategy, "name", "unknown"),
                     'sensing_distance':  getattr(agent, "sensing_distance", "unknown"),
                 })
+                avg_speed += speed
             else:
                 agents_data.append({
                     'id': agent.unique_id,
                     'x': float(agent.pos[0]),
                     'y': float(agent.pos[1])
                 })
+        avg_speed /= len(simulation_model.agents)
+        avg_speed *= 2.23694 /dt #convert to miles per hour
+        total_time = simulation_model.total_time / 1000 #convert to seconds
+        aggregate_data.append({
+            'avg_speed': round(float(avg_speed), 2),
+            'time_elapsed' : round(float(total_time) , 2)
+        })
 
         return jsonify({
             'status': 'success',
             'agents': agents_data,
+            'aggregateData': aggregate_data,
             'step': simulation_model.steps
         })
 
