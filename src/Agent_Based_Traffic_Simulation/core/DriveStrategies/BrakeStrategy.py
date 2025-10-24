@@ -52,7 +52,7 @@ class BrakeStrategy(AbstractDriveStrategy):
             a_cmd = 0.0
 
         # Apply along lane direction as a deceleration vector
-        direction = traffic_agent.current_lane_vector()  # unit vector along lane
+        direction = traffic_agent.vehicle.velocity  # unit vector along lane
         # change_magnitude makes a +magnitude vector; negate to ensure we decelerate
         new_accel = -change_magnitude(direction, abs(a_cmd))
         traffic_agent.vehicle.setAcceleration(new_accel)

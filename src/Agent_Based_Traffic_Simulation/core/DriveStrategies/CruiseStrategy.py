@@ -25,7 +25,7 @@ class CruiseStrategy(AbstractDriveStrategy):
         if(acceleration_clipped <= 0 and current_v < EPS ):
             acceleration_clipped = 0
 
-        direction = traffic_agent.current_lane_vector()
+        direction = traffic_agent.vehicle.velocity
         new_acceleration = change_magnitude(direction, acceleration_clipped)
 
         traffic_agent.vehicle.setAcceleration(new_acceleration)

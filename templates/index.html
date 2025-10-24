@@ -84,7 +84,17 @@
         Step: <span id="stepCount">0</span> 
         | Agents: <span id="agentCount">0</span>
         | Data: <span id="aggregateData">0</span>
+        | 
       </div>
+      <div class="legend" style="margin-top: 8px; font-size: 13px;">
+          <strong>Color Legend:</strong>
+          <ul style="list-style: none; padding: 0; margin: 4px 0;">
+            <li><span style="display:inline-block; width:12px; height:12px; background-color:#ef4444; border-radius:2px; margin-right:6px;"></span>Hard Brake</li>
+            <li><span style="display:inline-block; width:12px; height:12px; background-color:#f77926; border-radius:2px; margin-right:6px;"></span>Brake</li>
+            <li><span style="display:inline-block; width:12px; height:12px; background-color:#22c55e; border-radius:2px; margin-right:6px;"></span>Accelerate</li>
+            <li><span style="display:inline-block; width:12px; height:12px; background-color:#eab308; border-radius:2px; margin-right:6px;"></span>Cruise</li>
+          </ul>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='js/sim.js') }}"></script>

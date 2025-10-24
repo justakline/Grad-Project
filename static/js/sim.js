@@ -53,7 +53,7 @@ let isPanning = false,
   oxAtPan = 0,
   oyAtPan = 0;
 
-let showSensing = true;
+let showSensing = false;
 let lastAgents = [];
 
 // NEW: gate drawing until initialized

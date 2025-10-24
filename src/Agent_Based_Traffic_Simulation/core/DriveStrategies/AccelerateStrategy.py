@@ -8,7 +8,7 @@ class AccelerateStrategy(AbstractDriveStrategy):
 
     def step(self, traffic_agent):
         dt = traffic_agent.model.dt
-        direction = traffic_agent.current_lane_vector()
+        direction = traffic_agent.vehicle.velocity
         current_speed = float(np.linalg.norm(traffic_agent.vehicle.velocity))
         desired_speed = float(traffic_agent.desired_speed)
 
