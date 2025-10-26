@@ -14,7 +14,7 @@ class Highway(ContinuousSpace):
         self.y_max: int = int(y_max)
         self.lane_count: int = int(lane_count)
         self.lane_width: float = float(lane_width)
-
+        self.is_torus = torus
         total_lane_w = self.lane_count * self.lane_width
 
         # If total lanes are wider than highway, clamp shoulder at 0 (still draw; caller should fix sizes)

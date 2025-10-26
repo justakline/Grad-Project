@@ -17,6 +17,7 @@ class TrafficModel(Model):
         self.steps = 0
         self.dt = dt
         self.total_time = 0
+        
 
         # Defaults for vehicle size in mm
         default_length_mm = 4500.0

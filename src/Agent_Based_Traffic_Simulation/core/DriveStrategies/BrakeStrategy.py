@@ -1,9 +1,29 @@
 import numpy as np
 from .AbstractDriveStrategy import AbstractDriveStrategy
-from ..Utils import change_magnitude, EPS
+from ..Utils import change_magnitude, EPS, to_unit
 
 class BrakeStrategy(AbstractDriveStrategy):
     name = "brake"
+    
+    
+    def big_brake(self, traffic_agent, v_lead, v_now, lead, b_hard, a_safety):
+
+        kv        = 0.12     # ms^-1, speed tracking gain
+        b_margin  = 0.05     # mm/ms^2, extra over leader braking
+
+        v_tar     = 0.75 * v_lead
+        a_track   = - kv * (v_now - v_tar)   # mm/ms^2
+
+        # Signed longitudinal leader acceleration (mm/ms^2)
+        # Use leader velocity direction. Fall back to follower direction if leader is nearly stopped.
+        lead_dir  = to_unit(lead.vehicle.velocity) if np.linalg.norm(lead.vehicle.velocity) > EPS else to_unit(traffic_agent.vehicle.velocity)
+        aL_long   = float(np.dot(lead.vehicle.acceleration, lead_dir))
+
+        # a_emerg = max(-b_hard, min(aL_long - b_margin, a_track))
+        a_emerg   = max(-b_hard, min(aL_long - b_margin, a_track))
+
+        # Take the stronger braking between your normal command and the emergency rule
+        return min(a_safety, a_emerg)
 
     def step(self, traffic_agent):
         dt = float(traffic_agent.model.dt)  # ms
@@ -23,6 +43,8 @@ class BrakeStrategy(AbstractDriveStrategy):
         b_hard = float(traffic_agent.b_max)                # hard decel cap (mm/ms^2)
         s0 = float(traffic_agent.smallest_follow_distance) # jam/standstill gap (mm)
         v_lead = float(np.linalg.norm(lead.vehicle.velocity))
+        
+        D_safe = float(getattr(traffic_agent, "emergency_distance", s0))
 
         # -------- safe speed (Gipps-style), aligned with report's "maximum safe speed" framing ----------
         # v_safe = -b * tau + sqrt( (b*tau)^2 + v_lead^2 + 2*b*(gap - s0) )
@@ -37,6 +59,8 @@ class BrakeStrategy(AbstractDriveStrategy):
         # (You can think of this as the "safety acceleration term" driven by safe speed.)
         a_safety = (v_target - v_now) / max(dt, 1.0)  # mm/ms^2 → will be ≤ 0
 
+        if(gap_mm < D_safe):
+            a_safety = self.big_brake(traffic_agent, v_lead, v_now, lead, b_hard, a_safety)
         # Anticipation of leader’s braking (the report’s “deceleration prediction term”):
         # If leader is much slower, bias toward stronger braking by blending in relative speed.
         dv = v_now - v_lead

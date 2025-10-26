@@ -27,19 +27,19 @@ class TrafficAgent(Agent):
 
         # dynamics and sensing (mm, ms)
         self.max_speed = random.uniform(35, 45)  # mm/ms
-        self.sensing_distance = random.uniform(60000, 120000)  # mm
-        self.desired_speed = random.uniform(0.8, 0.95) * self.max_speed
-        self.max_acceleration = random.uniform(0.0015, 0.003)  # mm/ms^2
-        self.cruise_gain = random.uniform(0.0007, 0.0015)   # 1/ms
-        self.braking_comfortable = random.uniform(0.002, 0.004)
+        self.sensing_distance = random.uniform(15000, 25000)  # mm
+        self.desired_speed = random.uniform(0.75, 0.95) * self.max_speed
+        self.max_acceleration = random.uniform(0.0035, 0.005)  # mm/ms^2
+        self.cruise_gain = random.uniform(0.0005, 0.0015)   # 1/ms
+        self.braking_comfortable = random.uniform(0.003, 0.011)
         self.desired_time_headway = random.uniform(900, 1800)  # ms
         self.time_headway = 1.2  # seconds (⚠ multiply speeds by 1000)
         self.reaction_time_ms = int(self.time_headway * 1000)  # ms
-        self.b_max = random.uniform(0.008, 0.012)  # mm/ms^2
+        self.b_max = random.uniform(0.011, 0.018)  # mm/ms^2
 
         # control params
         self.acceleration_increase = 3.00  # mm/ms^2
-        self.smallest_follow_distance = self.vehicle.length *0.3  # mm
+        self.smallest_follow_distance = self.vehicle.length *random.uniform(0.4, 1.4)  # mm
         self.slow_brake_distance_start = 12000  # mm (12 meters)
         self.hard_brake_distance_start = 5000  # mm (5 meters)
 
@@ -54,7 +54,7 @@ class TrafficAgent(Agent):
         self.gap_to_lead = None  # center-to-center, longitudinal mm
 
         # decision cadence
-        self.decision_time = random.randint(10, 50)  # ms
+        self.decision_time = random.randint(125, 250)  # ms
         self.internal_timer = self.decision_time
 
         # small initial push along lane
@@ -66,14 +66,14 @@ class TrafficAgent(Agent):
     # ---------- tick ----------
     def step(self) -> None:
         dt = self.model.dt  # ms
+        from .DriveStrategies.BrakeStrategy import BrakeStrategy
 
         # self.sense()
         # decide -> set acceleration
         self.action()
         
-        # Hard cap of trying to not make them overlap
         if(self.gap_to_lead is not None and self.gap_to_lead < self.smallest_follow_distance):
-            self.vehicle.velocity = self.lead.vehicle.velocity
+            self.vehicle.velocity = self.lead.vehicle.velocity * 0.9
 
 
 
@@ -81,17 +81,21 @@ class TrafficAgent(Agent):
         self.vehicle.position += self.vehicle.velocity * dt
 
         if (
+
             self.vehicle.position[0] >= self.model.highway.x_max
             or self.vehicle.position[0] <= self.model.highway.x_min
             or self.vehicle.position[1] >= self.model.highway.y_max
             or self.vehicle.position[1] <= self.model.highway.y_min
         ):
-            print("removed")
-            self.remove()
-            return
+            if(self.model.highway.is_torus):
+                self.vehicle.position[1] = 0
+            else:
+                print("removed")
+                self.remove()
+                return
 
         self.model.highway.move_agent(self, self.vehicle.position)
-        self.internal_timer += 1
+        self.internal_timer += dt
 
     # ---------- strategy selection ----------
     def action(self) -> None:
@@ -99,6 +103,9 @@ class TrafficAgent(Agent):
         from .DriveStrategies.AccelerateStrategy import AccelerateStrategy
         from .DriveStrategies.BrakeStrategy import BrakeStrategy
 
+        if(self.internal_timer < self.decision_time):
+            self.current_drive_strategy.step(self)
+            return
         self.previous_drive_strategy = self.current_drive_strategy
 
         self.lead, self.gap_to_lead = self.find_lead_and_gap(self.sensing_distance)
@@ -124,7 +131,7 @@ class TrafficAgent(Agent):
 
             # If gap is generous OR we are not closing, keep cruise
             if self.gap_to_lead > desired_headway_gap_distance:
-                if(closing_speed >= 0.0):
+                if(closing_speed > 0.0):
                     self.assign_strategy(BrakeStrategy)
                 # accelerate only if under desired, else cruise
                 if current_speed + EPS < self.desired_speed:

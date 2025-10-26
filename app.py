@@ -42,7 +42,7 @@ def init_simulation(sim_type):
             dt = 20 #ms
             
             # Highway units are millimeters
-            highway = Highway(highway_width, highway_length, False, highway_lanes, lane_size)
+            highway = Highway(highway_width, highway_length, True, highway_lanes, lane_size)
             simulation_model = TrafficModel(40,1, dt, highway)
             simulation_type = 'traffic'
             return jsonify({
