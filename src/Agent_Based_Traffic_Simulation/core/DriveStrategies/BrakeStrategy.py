@@ -19,7 +19,6 @@ class BrakeStrategy(AbstractDriveStrategy):
         lead_dir  = to_unit(lead.vehicle.velocity) if np.linalg.norm(lead.vehicle.velocity) > EPS else to_unit(traffic_agent.vehicle.velocity)
         aL_long   = float(np.dot(lead.vehicle.acceleration, lead_dir))
 
-        # a_emerg = max(-b_hard, min(aL_long - b_margin, a_track))
         a_emerg   = max(-b_hard, min(aL_long - b_margin, a_track))
 
         # Take the stronger braking between your normal command and the emergency rule
@@ -31,24 +30,27 @@ class BrakeStrategy(AbstractDriveStrategy):
         lead = traffic_agent.lead
         gap_mm = traffic_agent.gap_to_lead  # bumper-to-bumper gap from your find_lead_and_gap
         v_now = float(np.linalg.norm(traffic_agent.vehicle.velocity))
-
-        # If no leader or no usable gap, fall back to zero accel (TrafficAgent will likely switch strategy next tick)
-        if lead is None or gap_mm is None:
-            traffic_agent.vehicle.setAcceleration(np.array([0.0, 0.0]))
-            return
-
         # -------- parameters (mm, ms, mm/ms, mm/ms^2) ----------
         tau = float(getattr(traffic_agent, "reaction_time_ms", traffic_agent.time_headway * 1000.0))  # ms
         b_comf = float(traffic_agent.braking_comfortable)  # comfortable decel (mm/ms^2)
-        b_hard = float(traffic_agent.b_max)                # hard decel cap (mm/ms^2)
-        s0 = float(traffic_agent.smallest_follow_distance) # jam/standstill gap (mm)
-        v_lead = float(np.linalg.norm(lead.vehicle.velocity))
-        
+        b_hard = float(traffic_agent.b_max)  # hard decel cap (mm/ms^2)
+        s0 = float(traffic_agent.smallest_follow_distance)  # jam/standstill gap (mm)
+
         D_safe = float(getattr(traffic_agent, "emergency_distance", s0))
+
+        large_lead, large_gap = traffic_agent.find_lead_and_gap(traffic_agent.emergency_sensing_distance)
+
+
+
+        # This is a long sensing distance so treat it like it
+        # if(traffic_agent.sensing_distance < gap_mm):
+
+            # traffic_agent.vehicle.setAcceleration(0.95*traffic_agent.v)
 
         # -------- safe speed (Gipps-style), aligned with report's "maximum safe speed" framing ----------
         # v_safe = -b * tau + sqrt( (b*tau)^2 + v_lead^2 + 2*b*(gap - s0) )
         # Clamp under the radical to avoid small numerical negatives.
+        v_lead = float(np.linalg.norm(lead.vehicle.velocity))
         inside = (b_comf * tau) ** 2 + (v_lead ** 2) + 2.0 * b_comf * max(0.0, gap_mm - s0)
         v_safe = max(0.0, -b_comf * tau + np.sqrt(max(0.0, inside)))
 
@@ -68,12 +70,16 @@ class BrakeStrategy(AbstractDriveStrategy):
             # Extra braking proportional to closing speed; small gain keeps comfort.
             a_safety += - min(dv / max(tau, 1.0), b_comf)
 
+
+
         # Clip between comfortable and hard braking; do not allow positive accel in BrakeStrategy
         a_cmd = float(np.clip(a_safety, -b_hard, 0.0))
 
         # No backward roll when stopped
         if v_now < EPS and a_cmd < 0.0:
             a_cmd = 0.0
+
+
 
         # Apply along lane direction as a deceleration vector
         direction = traffic_agent.vehicle.velocity  # unit vector along lane

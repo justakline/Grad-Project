@@ -107,7 +107,7 @@ function worldToScreen(x, y) {
 
 // Zoom
 function setZoom(newZoom, ax = null, ay = null) {
-  newZoom = Math.min(4, Math.max(0.25, newZoom));
+  newZoom = Math.min(zoomSlider.max, Math.max(zoomSlider.min, newZoom));
   if (newZoom === zoom) return;
   const cssW = viewport.clientWidth,
     cssH = viewport.clientHeight;
