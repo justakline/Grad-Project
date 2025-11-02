@@ -24,24 +24,30 @@ class TrafficAgent(Agent):
         self.vehicle: Vehicle = Vehicle(position, length, width)
         self.goal: np.ndarray = goal
         self.lane_intent = lane_intent
+        self.current_lane = lane_intent
 
         # dynamics and sensing (mm, ms)
         self.max_speed = random.uniform(35, 45)  # mm/ms
-        self.sensing_distance = random.uniform(15000, 25000)  # mm
-        self.emergency_sensing_distance = random.uniform(45000, 70000)  # mm
+        # NOTE: 1 mm/ms = 1 m/s. At 35 m/s, a car travels 70m in 2s. Sensing distance should be generous.
+        self.sensing_distance = random.uniform(50_000, 100_000)  # mm (100-200 meters)
+        self.emergency_sensing_distance = 2* self.sensing_distance  # mm (200-300 meters)
         self.desired_speed = random.uniform(0.75, 0.95) * self.max_speed
-        self.max_acceleration = random.uniform(0.0010, 0.0025)  # mm/ms^2
+
+        # NOTE: 1 mm/ms^2 = 1000 m/s^2. Realistic car acceleration is 1-3 m/s^2.
+        # So we need values in the range of 0.001 to 0.003.
+        self.max_acceleration = random.uniform(0.001, 0.003)  # mm/ms^2 (Represents 1-3 m/s^2)
         self.cruise_gain = random.uniform(0.0005, 0.0015)   # 1/ms
-        self.braking_comfortable = random.uniform(0.006, 0.015)
+        self.braking_comfortable = random.uniform(0.002, 0.004) # mm/ms^2 (Represents 2-4 m/s^2, a comfortable brake)
         self.desired_time_headway = random.uniform(1200, 2400)  # ms
         self.time_headway = 1.2  # seconds (⚠ multiply speeds by 1000)
         self.reaction_time_ms = int(self.time_headway * 1000)  # ms
-        self.b_max = random.uniform(0.015, 0.025)  # mm/ms^2
+        self.b_max = random.uniform(0.008, 0.010)  # mm/ms^2 (Represents 8-10 m/s^2, max emergency braking)
         self.desired_gap =  self.vehicle.length *random.uniform(2, 3.2)  # mm
 
 
         # control params
-        self.acceleration_increase = 3.00  # mm/ms^2
+        # This value was 3.00, which is 3000 m/s^2. Assuming it's unused or a typo. Commenting out for safety.
+        # self.acceleration_increase = 3.00  # mm/ms^2
         self.smallest_follow_distance = self.vehicle.length *random.uniform(1, 1.4)  # mm
         self.slow_brake_distance_start = 12000  # mm (12 meters)
         self.hard_brake_distance_start = 5000  # mm (5 meters)
@@ -61,7 +67,7 @@ class TrafficAgent(Agent):
         self.internal_timer = self.decision_time
 
         # small initial push along lane
-        self.vehicle.velocity = self.current_lane_vector() * self.desired_speed
+        self.vehicle.velocity = self.current_lane_vector() * self.desired_speed/10
         print(self.current_lane_vector())
         print(self.vehicle.velocity)
         # self.vehicle.changeAcceleration(self.current_lane_vector() * random.uniform(0.002, 0.008))
@@ -74,9 +80,6 @@ class TrafficAgent(Agent):
         # self.sense()
         # decide -> set acceleration
         self.action()
-        
-        if(self.gap_to_lead is not None and self.gap_to_lead < self.smallest_follow_distance):
-            self.vehicle.velocity = self.lead.vehicle.velocity * 0.9
 
 
 
@@ -84,6 +87,7 @@ class TrafficAgent(Agent):
 
         if (np.linalg.norm(self.vehicle.velocity < 0)):
             self.vehicle.velocity = np.array([0,1])
+            # print("here")
         self.vehicle.position += self.vehicle.velocity * dt
 
         if (
@@ -93,10 +97,14 @@ class TrafficAgent(Agent):
             or self.vehicle.position[1] >= self.model.highway.y_max
             or self.vehicle.position[1] <= self.model.highway.y_min
         ):
+            
             if(self.model.highway.is_torus):
                 self.vehicle.position[1] = 0
             else:
                 print("removed")
+                # This is extra cleanup because if I only remove it, the follow vehicle still uses its end position, ie the finish line
+                # As the follow position, and since there is no more changes to position, the follow vehicle would brake, this presents that
+                self.pos = (self.model.highway.x_max *2, self.model.highway.y_max *2)
                 self.remove()
                 return
 
@@ -109,63 +117,33 @@ class TrafficAgent(Agent):
         from .DriveStrategies.AccelerateStrategy import AccelerateStrategy
         from .DriveStrategies.BrakeStrategy import BrakeStrategy
 
-        # Have a commitment to one strategy, but if we are too close to
-        # The car in front of us then react
-        if(self.internal_timer < self.decision_time):
-            if(self.lead and self.gap_to_lead < self.smallest_follow_distance):
-                self.assign_strategy(BrakeStrategy)
-            self.current_drive_strategy.step(self)
-            return
+
         self.previous_drive_strategy = self.current_drive_strategy
-
-        self.lead, self.gap_to_lead = self.find_lead_and_gap(self.sensing_distance)
-        current_speed = float(np.linalg.norm(self.vehicle.velocity))
-
-        minimum_static_gap = float(self.smallest_follow_distance)
-        time_headway_ms = float(self.desired_time_headway)  # use the sampled one
-        # desired_headway_gap_distance = minimum_static_gap + time_headway_ms * current_speed
-        desired_headway_gap_distance = self.desired_gap
-
-        # add hysteresis buffer so you do not bounce into braking too early
-        safe_gap_buffer_mm = max(2000.0, 0.10 * desired_headway_gap_distance)  # 10% or at least 2 m
-        brake_threshold = desired_headway_gap_distance - safe_gap_buffer_mm
-
-        # # Check for emergency brake ahead
-        # emergency_lead, emergency_gap = self.find_lead_and_gap(self.emergency_sensing_distance)
-        # if(emergency_lead):
-        #     emergency_leader_speed = float(np.linalg.norm(emergency_lead.vehicle.velocity))
-        #     emergency_closing_speed = current_speed - emergency_leader_speed
-        #     if(self.is_uncomfortable_closing_speed(emergency_closing_speed, current_speed)):
-        #         self.assign_strategy(BrakeStrategy)
+        self.lead, self.gap_to_lead = self.find_lead_and_gap()
+        
+       
+        
 
         if self.lead is None or self.gap_to_lead is None:
-            # no leader: accelerate toward desired, then cruise
-            if current_speed + EPS < self.desired_speed:
-                self.assign_strategy(AccelerateStrategy)
-            else:
-                self.assign_strategy(CruiseStrategy)
+            self.assign_strategy(AccelerateStrategy) # Cruise/Accelerate is handled inside CruiseStrategy
         else:
-            leader_speed = float(np.linalg.norm(self.lead.vehicle.velocity))
-            closing_speed = current_speed - leader_speed
+            v_now = np.linalg.norm(self.vehicle.velocity)
+            v_lead = np.linalg.norm(self.lead.vehicle.velocity)
+            closing_speed = v_now - v_lead # Positive if closing, negative if pulling away
 
-            # If gap is generous OR we are not closing, keep cruise
-            if self.gap_to_lead > desired_headway_gap_distance:
-                if(self.is_uncomfortable_closing_speed(closing_speed, current_speed)):
-                    self.assign_strategy(BrakeStrategy)
-                # accelerate only if under desired, else cruise
-                # if current_speed + EPS < self.desired_speed:
-                #     self.assign_strategy(AccelerateStrategy)
-                # else:
-                else:
-                    self.assign_strategy(CruiseStrategy)
+            safe_dist = self.get_safe_following_distance()
+            is_uncomfortable = self.is_uncomfortable_closing_speed(closing_speed, v_now)
+            
+
+            if self.gap_to_lead < safe_dist or is_uncomfortable:
+                self.assign_strategy(BrakeStrategy)
+                
+            elif self.gap_to_lead < self.desired_gap:
+                self.assign_strategy(CruiseStrategy)
             else:
-                # only brake if clearly inside threshold
-                # self.assign_strategy(BrakeStrategy)
-                if self.gap_to_lead < brake_threshold and closing_speed > 0.0:
-                    self.assign_strategy(BrakeStrategy)
-                else:
-                    # mild follow-by-cruise behavior
-                    self.assign_strategy(CruiseStrategy)
+                # Gap is generous, so accelerate towards desired speed
+                self.assign_strategy(AccelerateStrategy)
+                
 
         if type(self.current_drive_strategy) is not type(self.previous_drive_strategy):
             self.internal_timer = -1
@@ -173,9 +151,25 @@ class TrafficAgent(Agent):
         self.current_drive_strategy.step(self)
 
     # ---------- helpers ----------
+    def get_safe_following_distance(self):
+        """
+        Calculates safe following distance using the Intelligent Driver Model (IDM) approach.
+        s*(v, dv) = s0 + max(0, v*T + (v*dv) / (2*sqrt(a*b)))
+        """
+        if self.lead is None:
+            return 0.0
+
+        v = np.linalg.norm(self.vehicle.velocity)
+        v_lead = np.linalg.norm(self.lead.vehicle.velocity)
+        delta_v = v - v_lead
+
+        s_star = self.smallest_follow_distance + max(0.0, (v * self.desired_time_headway / 1000.0) + (v * delta_v) / (2 * np.sqrt(self.max_acceleration * self.braking_comfortable)))
+        return s_star
+
     def assign_strategy(self, strategy_type: Type['AbstractDriveStrategy']):
         if not isinstance(self.current_drive_strategy, strategy_type):
             self.current_drive_strategy = strategy_type()
+            
     def is_uncomfortable_closing_speed(self, closing_speed, velocity):
         if(velocity < 15):
             return closing_speed > 10
@@ -189,17 +183,25 @@ class TrafficAgent(Agent):
         lane = self.model.highway.lanes[self.lane_intent]
         d = lane.end_position - self.vehicle.position
         return to_unit(d)
+    
+    
 
     # def find_lead_and_gap(self, sense):
-    def find_lead_and_gap(self, sense):
-        lane = self.model.highway.lanes[self.lane_intent]
-        candidates = self.model.highway.get_neighbors(self.pos, sense, False)
+    def find_lead_and_gap(self, max_sense=200_000_000):
+        
+        # Poll candidates until we find one in front of us
+        sense = 10_000 # Start at 10 meters in front of me
+        candidates = []
+        while len(candidates) == 0 and sense < max_sense:
+            candidates = self.model.highway.get_neighbors(self.pos, sense, False)
+            candidates = list(filter(
+                lambda a: a.pos[1] > self.pos[1] and a.lane_intent == self.lane_intent,
+                candidates
+            ))
+            sense *= 2
+
 
         # Filter: same lane and further along
-        candidates = filter(
-            lambda a: a.pos[1] > self.pos[1] and a.lane_intent == self.lane_intent,
-            candidates
-        )
         candidates = sorted(candidates, key=lambda a: a.pos[1], reverse=False)
 
         if len(candidates) == 0:

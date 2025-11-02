@@ -35,11 +35,11 @@ def init_simulation(sim_type):
             from src.Agent_Based_Traffic_Simulation.core.TrafficModel import TrafficModel
             from src.Agent_Based_Traffic_Simulation.core.Highway import Highway
 
-            highway_length = 2_000_000
+            highway_length = 1_000_000
             highway_lanes = 3
             lane_size = 3657
             dt = 40 #ms
-            n_agents = 200
+            n_agents = 400
             wrap_highway = False
 
             highway_width = highway_lanes * lane_size * 1.01 # 1.01 due to index out of bounds exceptions

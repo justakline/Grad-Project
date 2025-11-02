@@ -17,6 +17,7 @@ class TrafficModel(Model):
         self.steps = 0
         self.dt = dt
         self.total_time = 0
+        self.top_agent = None
         
 
         # Defaults for vehicle size in mm
@@ -61,6 +62,13 @@ class TrafficModel(Model):
         self.agents.do("step")
         self.steps += 1
         self.total_time +=self.dt
+
+        if self.agents:
+            # Find the agent with the highest y-position value
+            self.top_agent = max(self.agents, key=lambda agent: agent.pos[1])
+        else:
+            self.top_agent = None
+        
 
     def _find_clear_spawn(self, lane_idx: int, vehicle_length_mm: float, tries: int = 50):
         """

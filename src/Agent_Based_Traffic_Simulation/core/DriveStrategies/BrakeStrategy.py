@@ -5,75 +5,54 @@ from ..Utils import change_magnitude, EPS, to_unit
 class BrakeStrategy(AbstractDriveStrategy):
     name = "brake"
     
-    
-    def big_brake(self, traffic_agent, v_lead, v_now, lead, b_hard, a_safety):
-
-        kv        = 0.12     # ms^-1, speed tracking gain
-        b_margin  = 0.05     # mm/ms^2, extra over leader braking
-
-        v_tar     = 0.75 * v_lead
-        a_track   = - kv * (v_now - v_tar)   # mm/ms^2
-
-        # Signed longitudinal leader acceleration (mm/ms^2)
-        # Use leader velocity direction. Fall back to follower direction if leader is nearly stopped.
-        lead_dir  = to_unit(lead.vehicle.velocity) if np.linalg.norm(lead.vehicle.velocity) > EPS else to_unit(traffic_agent.vehicle.velocity)
-        aL_long   = float(np.dot(lead.vehicle.acceleration, lead_dir))
-
-        a_emerg   = max(-b_hard, min(aL_long - b_margin, a_track))
-
-        # Take the stronger braking between your normal command and the emergency rule
-        return min(a_safety, a_emerg)
+   
+class BrakeStrategy(AbstractDriveStrategy):
+    name = "brake"
 
     def step(self, traffic_agent):
-        dt = float(traffic_agent.model.dt)  # ms
-
+        """
+        Implements braking behavior based on the Intelligent Driver Model (IDM).
+        The acceleration is calculated to safely reduce speed and avoid collision.
+        """
         lead = traffic_agent.lead
-        gap_mm = traffic_agent.gap_to_lead  # bumper-to-bumper gap from your find_lead_and_gap
+        if lead is None:
+            # Should not happen if logic in TrafficAgent is correct, but as a fallback, stop braking.
+            from .CruiseStrategy import CruiseStrategy
+            traffic_agent.assign_strategy(CruiseStrategy)
+            traffic_agent.current_drive_strategy.step(traffic_agent)
+            return
+
         v_now = float(np.linalg.norm(traffic_agent.vehicle.velocity))
-        # -------- parameters (mm, ms, mm/ms, mm/ms^2) ----------
-        tau = float(getattr(traffic_agent, "reaction_time_ms", traffic_agent.time_headway * 1000.0))  # ms
-        b_comf = float(traffic_agent.braking_comfortable)  # comfortable decel (mm/ms^2)
-        b_hard = float(traffic_agent.b_max)  # hard decel cap (mm/ms^2)
-        s0 = float(traffic_agent.smallest_follow_distance)  # jam/standstill gap (mm)
-
-        D_safe = float(getattr(traffic_agent, "emergency_distance", s0))
-
-        large_lead, large_gap = traffic_agent.find_lead_and_gap(traffic_agent.emergency_sensing_distance)
-
-
-
-        # This is a long sensing distance so treat it like it
-        # if(traffic_agent.sensing_distance < gap_mm):
-
-            # traffic_agent.vehicle.setAcceleration(0.95*traffic_agent.v)
-
-        # -------- safe speed (Gipps-style), aligned with report's "maximum safe speed" framing ----------
-        # v_safe = -b * tau + sqrt( (b*tau)^2 + v_lead^2 + 2*b*(gap - s0) )
-        # Clamp under the radical to avoid small numerical negatives.
         v_lead = float(np.linalg.norm(lead.vehicle.velocity))
-        inside = (b_comf * tau) ** 2 + (v_lead ** 2) + 2.0 * b_comf * max(0.0, gap_mm - s0)
-        v_safe = max(0.0, -b_comf * tau + np.sqrt(max(0.0, inside)))
+        delta_v = v_now - v_lead
+        gap = traffic_agent.gap_to_lead
 
-        # Never accelerate in "brake" mode; aim no higher than current speed
-        v_target = min(v_now, v_safe)
+        # IDM parameters from agent
+        a = traffic_agent.max_acceleration
+        b = traffic_agent.braking_comfortable
+        s0 = traffic_agent.smallest_follow_distance
+        T = traffic_agent.desired_time_headway / 1000.0 # convert ms to s for formula, but speeds are mm/ms
+        v0 = traffic_agent.desired_speed
+        delta = 4.0 # Acceleration exponent, common default for IDM
 
-        # Safety deceleration needed to move toward v_target over the next step
-        # (You can think of this as the "safety acceleration term" driven by safe speed.)
-        a_safety = (v_target - v_now) / max(dt, 1.0)  # mm/ms^2 → will be ≤ 0
+        # IDM's desired gap calculation
+        s_star = s0 + max(0.0, (v_now * T) + (v_now * delta_v) / (2 * np.sqrt(a * b)))
 
-        if(gap_mm < D_safe):
-            a_safety = self.big_brake(traffic_agent, v_lead, v_now, lead, b_hard, a_safety)
-        # Anticipation of leader’s braking (the report’s “deceleration prediction term”):
-        # If leader is much slower, bias toward stronger braking by blending in relative speed.
-        dv = v_now - v_lead
-        if dv > 0.0:
-            # Extra braking proportional to closing speed; small gain keeps comfort.
-            a_safety += - min(dv / max(tau, 1.0), b_comf)
+        # Full IDM acceleration formula
+        # Includes free-road acceleration and interaction term for braking.
+        free_road_term = a * (1 - (v_now / v0) ** delta if v0 > 0 else 1)
+        interaction_term = -a * (s_star / max(gap, s0))**2
+        a_cmd = free_road_term + interaction_term
 
-
-
-        # Clip between comfortable and hard braking; do not allow positive accel in BrakeStrategy
-        a_cmd = float(np.clip(a_safety, -b_hard, 0.0))
+        # Clip at max braking force and ensure we are decelerating
+        a_cmd = float(np.clip(a_cmd, -traffic_agent.b_max, 0.0))
+        # a_cmd = float(min(a_cmd, 0.0))
+        # If we are inside the minimum safe distance, override and brake as hard as possible.
+        if gap < s0:
+            a_cmd = -traffic_agent.b_max
+        else:
+            # Otherwise, use the calculated acceleration, ensuring it's only for braking.
+            a_cmd = float(np.clip(a_cmd, -traffic_agent.b_max, 0.0))
 
         # No backward roll when stopped
         if v_now < EPS and a_cmd < 0.0:
@@ -82,7 +61,6 @@ class BrakeStrategy(AbstractDriveStrategy):
 
 
         # Apply along lane direction as a deceleration vector
-        direction = traffic_agent.vehicle.velocity  # unit vector along lane
-        # change_magnitude makes a +magnitude vector; negate to ensure we decelerate
-        new_accel = -change_magnitude(direction, abs(a_cmd))
+        direction = to_unit(traffic_agent.vehicle.velocity) if np.linalg.norm(traffic_agent.vehicle.velocity) > EPS else np.array([0., 1.])
+        new_accel = direction * a_cmd
         traffic_agent.vehicle.setAcceleration(new_accel)
