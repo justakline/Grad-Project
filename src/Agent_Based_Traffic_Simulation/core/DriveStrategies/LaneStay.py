@@ -129,29 +129,40 @@ class LaneStay(AbstractLaneChange):
         if follower is None:
             return True
 
-        duration = 2000.0  # Lane change duration from LaneChangeStrategy
+        # --- Simulation Parameters ---
+        duration = 2000.0  # Must match the duration in LaneChangeStrategy
         dt = ego_agent.model.dt
         time_steps = int(duration / dt)
+        target_lane_x = ego_agent.model.highway.lanes[ego_agent.lane_intent].start_position[0]
 
-        # Get predicted accelerations
-        ego_accel = self.get_potential_accel(ego_agent, ego_agent.lead) # Ego's accel in new lane
+        # --- Get Predicted Accelerations ---
+        # Find the new leader in the target lane to correctly predict ego's acceleration
+        new_leader, _ = ego_agent.find_neighbors_in_lane(ego_agent.lane_intent)
+        ego_accel = self.get_potential_accel(ego_agent, new_leader)
         follower_accel = self.get_follower_accel(ego_agent, follower) # Follower's accel if we cut in
 
-        # Initial states
-        ego_pos = (ego_agent.pos[0], ego_agent.pos[1])
+        # --- Initial States for Simulation ---
+        ego_pos = ego_agent.vehicle.position.copy()
         ego_vel = ego_agent.vehicle.velocity.copy()
-        follower_pos = (follower.pos[0], follower.pos[1])
+        follower_pos = follower.vehicle.position.copy()
         follower_vel = follower.vehicle.velocity.copy()
 
-        for _ in range(time_steps):
-            # Update positions based on simple physics
-            ego_pos += ego_vel * dt
+        for i in range(time_steps):
+            # --- Predict Ego Agent's Movement ---
+            # Calculate lateral velocity for this step
+            remaining_time = duration - (i * dt)
+            lateral_vel_x = (target_lane_x - ego_pos[0]) / remaining_time if remaining_time > 0 else 0
+            ego_vel[0] = lateral_vel_x
+            # Update longitudinal velocity and position
             ego_vel[1] += ego_accel * dt
+            ego_pos += ego_vel * dt
             
-            follower_pos += follower_vel * dt
+            # --- Predict Follower's Movement ---
+            # Follower only moves longitudinally
             follower_vel[1] += follower_accel * dt
+            follower_pos[1] += follower_vel[1] * dt
 
-            # Check for bounding box overlap
+            # --- Check for Bounding Box Overlap at this time step ---
             dx = abs(ego_pos[0] - follower_pos[0])
             dy = abs(ego_pos[1] - follower_pos[1])
             if dx < (ego_agent.vehicle.width / 2 + follower.vehicle.width / 2) and \

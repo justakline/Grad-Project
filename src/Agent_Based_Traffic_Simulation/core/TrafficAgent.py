@@ -286,8 +286,11 @@ class TrafficAgent(Agent):
         neighbors = self.model.highway.get_neighbors(self.pos, check_radius, False)
 
         for neighbor in neighbors:
-            dx = abs(next_pos_x - neighbor.pos[0])
-            dy = abs(next_pos_y - neighbor.pos[1])
+            # Predict neighbor's next position as well for a more accurate check
+            neighbor_next_pos = neighbor.pos + neighbor.vehicle.velocity * dt
+
+            dx = abs(next_pos_x - neighbor_next_pos[0])
+            dy = abs(next_pos_y - neighbor_next_pos[1])
             if dx < (my_half_width + neighbor.vehicle.width / 2) and dy < (my_half_length + neighbor.vehicle.length / 2):
                 return True # Collision detected
 
