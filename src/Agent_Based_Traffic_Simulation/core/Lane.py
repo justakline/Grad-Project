@@ -7,3 +7,5 @@ class Lane:
         self.start_position:np.array = start_position
         self.end_position:np.array = end_position
         self.lane_width:int = lane_width
+
+    

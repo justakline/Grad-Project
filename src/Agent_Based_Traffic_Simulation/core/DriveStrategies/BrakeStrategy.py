@@ -5,9 +5,6 @@ from ..Utils import change_magnitude, EPS, to_unit
 class BrakeStrategy(AbstractDriveStrategy):
     name = "brake"
     
-   
-class BrakeStrategy(AbstractDriveStrategy):
-    name = "brake"
 
     def step(self, traffic_agent):
         """
@@ -64,3 +61,43 @@ class BrakeStrategy(AbstractDriveStrategy):
         direction = to_unit(traffic_agent.vehicle.velocity) if np.linalg.norm(traffic_agent.vehicle.velocity) > EPS else np.array([0., 1.])
         new_accel = direction * a_cmd
         traffic_agent.vehicle.setAcceleration(new_accel)
+
+    
+
+
+    def calculate_accel(self, traffic_agent) -> float:
+        """Calculates the desired acceleration for braking without applying it."""
+        lead = traffic_agent.lead
+        if lead is None or traffic_agent.gap_to_lead is None:
+            return 0.0
+        v_now = float(np.linalg.norm(traffic_agent.vehicle.velocity))
+        v_lead = float(np.linalg.norm(lead.vehicle.velocity))
+        delta_v = v_now - v_lead
+        gap = traffic_agent.gap_to_lead
+
+        # --- This logic is copied from the step() method to ensure consistency ---
+        a = traffic_agent.max_acceleration
+        b = traffic_agent.braking_comfortable
+        s0 = traffic_agent.smallest_follow_distance
+        T = traffic_agent.desired_time_headway / 1000.0 # convert ms to s for formula, but speeds are mm/ms
+        v0 = traffic_agent.desired_speed
+        delta = 4.0 # Acceleration exponent, common default for IDM
+
+        # IDM's desired gap calculation
+        s_star = s0 + max(0.0, (v_now * T) + (v_now * delta_v) / (2 * np.sqrt(a * b)))
+
+        # Full IDM acceleration formula
+        free_road_term = a * (1 - (v_now / v0) ** delta if v0 > 0 else 1)
+        interaction_term = -a * (s_star / max(gap, s0))**2
+        a_cmd = free_road_term + interaction_term
+
+        # Emergency brake override and final clipping
+        if gap < s0:
+            a_cmd = -traffic_agent.b_max
+        else:
+            a_cmd = float(np.clip(a_cmd, -traffic_agent.b_max, 0.0))
+
+        if v_now < EPS and a_cmd < 0.0:
+            a_cmd = 0.0
+        
+        return a_cmd

@@ -12,30 +12,28 @@ class CruiseStrategy(AbstractDriveStrategy):
     #     traffic_agent.vehicle.setAcceleration(np.array([0,0]))
 
     def step(self, traffic_agent):
+        a_cmd = self.calculate_accel(traffic_agent)
+        direction = to_unit(traffic_agent.vehicle.velocity) if np.linalg.norm(traffic_agent.vehicle.velocity) > EPS else np.array([0., 1.])
+        new_acceleration = direction * a_cmd
+        traffic_agent.vehicle.setAcceleration(new_acceleration)
 
-        dt = traffic_agent.model.dt
+    def calculate_accel(self, traffic_agent) -> float:
         cruise_g = traffic_agent.cruise_gain
         desired_v = traffic_agent.desired_speed
         current_v = np.linalg.norm(traffic_agent.vehicle.velocity)
 
         # The acceleration/deceleration needed to get to my desired velocity
-        acceleration_raw = cruise_g *(desired_v - current_v )
+        acceleration_raw = cruise_g * (desired_v - current_v)
 
-        braking_comfortable = traffic_agent.braking_comfortable
         max_accel = traffic_agent.max_acceleration
 
-        #
-        # acceleration_clipped = np.clip(acceleration_raw, -1*braking_comfortable, max_accel)
-        acceleration_clipped = max(acceleration_raw, max_accel)
+        # This logic is flawed, it should not be max()
+        # It should be clipped between a min (like comfortable braking) and max accel.
+        # For now, we will just clip it at max acceleration.
+        acceleration_clipped = min(acceleration_raw, max_accel)
 
         # No backwards movement when at a standstill
-        if(acceleration_clipped <= 0 and current_v < EPS ):
+        if acceleration_clipped <= 0 and current_v < EPS:
             acceleration_clipped = 0
-
-        direction = traffic_agent.vehicle.velocity
-        new_acceleration = change_magnitude(direction, acceleration_clipped)
-
-        traffic_agent.vehicle.setAcceleration(new_acceleration)
-
-
-        # traffic_agent.vehicle.setAcceleration(np.array([0.0, 0.0]))
+        
+        return acceleration_clipped

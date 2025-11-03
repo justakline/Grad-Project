@@ -7,24 +7,29 @@ class AccelerateStrategy(AbstractDriveStrategy):
     name = "accelerate"
 
     def step(self, traffic_agent):
-        dt = traffic_agent.model.dt
-        direction = traffic_agent.vehicle.velocity
+        a_cmd = self.calculate_accel(traffic_agent)
+        direction = to_unit(traffic_agent.vehicle.velocity) if np.linalg.norm(traffic_agent.vehicle.velocity) > EPS else np.array([0., 1.])
+        new_acceleration = direction * a_cmd
+        traffic_agent.vehicle.setAcceleration(new_acceleration)
+        
+
+
+    def calculate_accel(self, traffic_agent) -> float:
+        """Calculates the desired acceleration without applying it."""
         current_speed = float(np.linalg.norm(traffic_agent.vehicle.velocity))
         desired_speed = float(traffic_agent.desired_speed)
 
         # reuse the same gain profile as cruise, but never decelerate
         cruise_gain = float(traffic_agent.cruise_gain)
         acceleration_raw = cruise_gain * (desired_speed - current_speed)
-        acceleration_raw = max(0.0, acceleration_raw)  # only accelerate
 
         max_accel = float(traffic_agent.max_acceleration)
 
         # final accel bounded to [0, max_accel]
         acceleration_clipped = np.clip(acceleration_raw, 0.0, max_accel)
 
-        # if nearly stopped, do not allow tiny negative due to numerics
-        if acceleration_clipped <= 0.0 and current_speed < EPS:
+        # No backwards movement when at a standstill
+        if current_speed < EPS and acceleration_clipped < 0:
             acceleration_clipped = 0.0
-
-        new_acceleration = change_magnitude(direction, acceleration_clipped)
-        traffic_agent.vehicle.setAcceleration(new_acceleration)
+        
+        return float(acceleration_clipped)

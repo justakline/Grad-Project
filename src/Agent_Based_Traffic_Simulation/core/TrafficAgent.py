@@ -52,10 +52,16 @@ class TrafficAgent(Agent):
         self.slow_brake_distance_start = 12000  # mm (12 meters)
         self.hard_brake_distance_start = 5000  # mm (5 meters)
 
+        # Lane change parameters
+        self.politeness_factor = random.uniform(0.1, 0.5) # 0 is egoistic, >1 is altruistic
+        self.lane_change_threshold = random.uniform(0.0001, 0.0005) # Min acceleration gain to justify a change
+
         # strategies
         from .DriveStrategies.CruiseStrategy import CruiseStrategy
+        from .DriveStrategies.LaneStay import LaneStay
         self.previous_drive_strategy = CruiseStrategy()
         self.current_drive_strategy = CruiseStrategy()
+        self.lane_change_strategy = LaneStay()
 
         # tracking
         self.lead = None
@@ -65,6 +71,7 @@ class TrafficAgent(Agent):
         # decision cadence
         self.decision_time = random.randint(125, 250)  # ms
         self.internal_timer = self.decision_time
+        self.initial_lane_x = self.vehicle.position[0]
 
         # small initial push along lane
         self.vehicle.velocity = self.current_lane_vector() * self.desired_speed/10
@@ -80,14 +87,26 @@ class TrafficAgent(Agent):
         # self.sense()
         # decide -> set acceleration
         self.action()
+        # decide -> set lane change
+        # This will set a lateral_velocity on the lane_change_strategy if a change is active
+        self.lane_change_strategy.step(self)
 
+        # --- Physics Update ---
+        # 1. Get longitudinal acceleration from the driving strategy
+        longitudinal_accel_magnitude = self.current_drive_strategy.calculate_accel(self)
+        
+        # 2. Update longitudinal velocity (y-component)
+        # Assuming velocity is primarily along the y-axis
+        self.vehicle.velocity[1] += longitudinal_accel_magnitude * dt
 
+        # 3. Get lateral velocity from the lane change strategy
+        # This will be 0 if in LaneStay, and non-zero if in LaneChangeStrategy
+        self.vehicle.velocity[0] = self.lane_change_strategy.lateral_velocity if hasattr(self.lane_change_strategy, 'lateral_velocity') else 0.0
 
-        self.vehicle.velocity = self.vehicle.velocity + self.vehicle.acceleration * dt
-
+        # 4. Final velocity update (ensure no negative y-velocity)
         if (np.linalg.norm(self.vehicle.velocity < 0)):
-            self.vehicle.velocity = np.array([0,1])
-            # print("here")
+            self.vehicle.velocity[1] = max(0, self.vehicle.velocity[1])
+
         self.vehicle.position += self.vehicle.velocity * dt
 
         if (
@@ -148,7 +167,8 @@ class TrafficAgent(Agent):
         if type(self.current_drive_strategy) is not type(self.previous_drive_strategy):
             self.internal_timer = -1
 
-        self.current_drive_strategy.step(self)
+        # The step function no longer applies acceleration, it's handled in the main agent step
+        # self.current_drive_strategy.step(self)
 
     # ---------- helpers ----------
     def get_safe_following_distance(self):
@@ -195,7 +215,8 @@ class TrafficAgent(Agent):
         while len(candidates) == 0 and sense < max_sense:
             candidates = self.model.highway.get_neighbors(self.pos, sense, False)
             candidates = list(filter(
-                lambda a: a.pos[1] > self.pos[1] and a.lane_intent == self.lane_intent,
+                # Find leader in the current physical lane, not the intended lane.
+                lambda a: a.pos[1] > self.pos[1] and a.current_lane == self.current_lane,
                 candidates
             ))
             sense *= 2
@@ -211,5 +232,63 @@ class TrafficAgent(Agent):
         gap = (lead.pos[1] - lead.vehicle.length / 2) - (self.pos[1] + self.vehicle.length / 2)
         return lead, gap
 
+    def find_neighbors_in_lane(self, lane_idx):
+        """Finds the immediate leader and follower in a given lane."""
+        sense_dist = 150_000 # 150m
+        neighbors = self.model.highway.get_neighbors(self.pos, sense_dist, False)
+        
+        # Filter for agents in the target lane
+        target_lane = self.model.highway.lanes[lane_idx]
+        lane_width = target_lane.lane_width
+        lane_center_x = target_lane.start_position[0]
+        lane_min_x = lane_center_x - lane_width / 2
+        lane_max_x = lane_center_x + lane_width / 2
+
+        # An agent is considered in the lane if any part of its body is inside the lane boundaries.
+        lane_neighbors = [a for a in neighbors if (a.pos[0] - a.vehicle.width / 2) < lane_max_x and (a.pos[0] + a.vehicle.width / 2) > lane_min_x]
+        
+        # Agents in front of us
+        leaders = sorted(
+            [a for a in lane_neighbors if a.pos[1] > self.pos[1]],
+            key=lambda a: a.pos[1]
+        )
+        
+        # Agents behind us
+        followers = sorted(
+            [a for a in lane_neighbors if a.pos[1] < self.pos[1]],
+            key=lambda a: a.pos[1],
+            reverse=True
+        )
+
+        leader = leaders[0] if leaders else None
+        follower = followers[0] if followers else None
+        return leader, follower
+
     def get_scalar(self, vec: np.array) -> float:
         return np.linalg.norm(vec)
+
+    def is_colliding_at_next_step(self, lateral_velocity: float) -> bool:
+        """
+        Predicts if a collision will occur in the next time step given a lateral velocity.
+        """
+        dt = self.model.dt
+
+        # Predict our agent's next position
+        next_pos_x = self.pos[0] + lateral_velocity * dt
+        next_pos_y = self.pos[1] + self.vehicle.velocity[1] * dt
+
+        # Define our agent's future bounding box
+        my_half_width = self.vehicle.width / 2
+        my_half_length = self.vehicle.length / 2
+
+        # Check against nearby agents
+        check_radius = self.vehicle.length # Check for collisions within one car length
+        neighbors = self.model.highway.get_neighbors(self.pos, check_radius, False)
+
+        for neighbor in neighbors:
+            dx = abs(next_pos_x - neighbor.pos[0])
+            dy = abs(next_pos_y - neighbor.pos[1])
+            if dx < (my_half_width + neighbor.vehicle.width / 2) and dy < (my_half_length + neighbor.vehicle.length / 2):
+                return True # Collision detected
+
+        return False # No collision
