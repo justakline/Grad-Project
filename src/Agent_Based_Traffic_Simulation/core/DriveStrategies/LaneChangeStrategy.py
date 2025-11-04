@@ -48,14 +48,14 @@ class LaneChangeStrategy(AbstractLaneChange):
             required_lateral_velocity = (self.target_x - traffic_agent.vehicle.position[0]) / remaining_time
 
         # Limit the lateral velocity to achieve a max angle of 30 degrees.
-        # tan(30 deg) = lateral_v / longitudinal_v  =>  lateral_v = longitudinal_v * tan(30)
-        max_lateral_velocity = abs(longitudinal_velocity) * np.tan(np.deg2rad(30))
+        # tan(30 deg) = lateral_v / longitudinal_v  =>  lateral_v = longitudinal_v * tan(45)
+        max_lateral_velocity = abs(longitudinal_velocity) * np.tan(np.deg2rad(45))
         potential_lateral_v = np.clip(required_lateral_velocity, -max_lateral_velocity, max_lateral_velocity)
 
         # --- CONTINUOUS DYNAMIC SAFETY CHECK ---
         # Before committing to the lateral movement, check if it will cause a collision.
         # An emergency return maneuver cannot be interrupted.
-        if not self.is_emergency_return and traffic_agent.is_colliding_at_next_step(potential_lateral_v):
+        if not self.is_emergency_return and traffic_agent.is_colliding_at_next_step(potential_lateral_v, self.target_x):
             # EMERGENCY ABORT: A collision is imminent. Change back to the original lane.
             # The new target is the initial X position, and this is now an emergency return.
             traffic_agent.lane_change_strategy = LaneChangeStrategy(traffic_agent.initial_lane_x, self.duration, is_emergency_return=True)

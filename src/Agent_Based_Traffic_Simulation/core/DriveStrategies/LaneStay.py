@@ -14,6 +14,12 @@ class LaneStay(AbstractLaneChange):
     Default lateral strategy. Agent stays in its lane while checking
     for opportunities to change lanes based on the MOBIL model.
     """
+    
+    def __init__(self): # Default 2 second lane change
+
+        self.lateral_velocity = 0.0
+
+        
     def step(self, traffic_agent: "TrafficAgent"):
         # Only check for lane changes on the agent's decision tick
         if traffic_agent.internal_timer < traffic_agent.decision_time:
@@ -29,6 +35,8 @@ class LaneStay(AbstractLaneChange):
         
         best_gain = -np.inf
         best_target_lane = -1
+        
+        gains = {}
 
         # Check left and right lanes
         for lane_offset in [-1, 1]:
@@ -66,13 +74,21 @@ class LaneStay(AbstractLaneChange):
                 follower_loss = accel_new_follower_current - accel_new_follower
 
             incentive = my_gain - (traffic_agent.politeness_factor * follower_loss)
+            
+
 
             if incentive > traffic_agent.lane_change_threshold and my_gain > best_gain:
                 best_gain = my_gain
                 best_target_lane = target_lane_idx
+                
+            # Left lane gets incentive due to it being a passing lane
+            my_gain  = my_gain * 1.2 if lane_offset == -1 else my_gain
+            gains[target_lane_idx] = my_gain
 
         # --- 5. Execute Lane Change if beneficial ---
         if best_target_lane != -1:
+            best_target_lane = max(gains, key=gains.get)
+            print(best_target_lane)
             target_lane_x = traffic_agent.model.highway.lanes[best_target_lane].start_position[0]
             traffic_agent.lane_intent = best_target_lane
             traffic_agent.initial_lane_x = traffic_agent.vehicle.position[0]
