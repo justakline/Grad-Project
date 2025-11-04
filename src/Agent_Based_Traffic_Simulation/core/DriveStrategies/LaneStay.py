@@ -88,7 +88,6 @@ class LaneStay(AbstractLaneChange):
         # --- 5. Execute Lane Change if beneficial ---
         if best_target_lane != -1:
             best_target_lane = max(gains, key=gains.get)
-            print(best_target_lane)
             target_lane_x = traffic_agent.model.highway.lanes[best_target_lane].start_position[0]
             traffic_agent.lane_intent = best_target_lane
             traffic_agent.initial_lane_x = traffic_agent.vehicle.position[0]

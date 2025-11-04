@@ -16,6 +16,7 @@ class CruiseStrategy(AbstractDriveStrategy):
         direction = to_unit(traffic_agent.vehicle.velocity) if np.linalg.norm(traffic_agent.vehicle.velocity) > EPS else np.array([0., 1.])
         new_acceleration = direction * a_cmd
         traffic_agent.vehicle.setAcceleration(new_acceleration)
+  
 
     def calculate_accel(self, traffic_agent) -> float:
         cruise_g = traffic_agent.cruise_gain

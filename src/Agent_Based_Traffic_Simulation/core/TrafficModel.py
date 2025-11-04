@@ -11,15 +11,43 @@ class TrafficModel(Model):
     Agents spawn on lane CENTERS coming from Highway.lanes[*].start_position[0].
     """
 
-    def __init__(self, n_agents: int, seed: int, dt: int, highway: Highway):
+    def __init__(self, n_agents: int, seed: int, dt: int, highway: Highway,  populate_highway = False, is_generate_agents:bool = False, agent_rate:int = 0):
         super().__init__(seed=seed)
         self.highway = highway
         self.steps = 0
         self.dt = dt
         self.total_time = 0
-        self.top_agent = None
-        
+        self.last_generated_agent_time = 0
+        self.is_generate_agents = is_generate_agents
+        self.agent_rate = agent_rate # -> Agents per second
 
+        # Congestion management
+        self.is_in_cooldown = False
+        self.cooldown_timer = 0.0
+        self.congestion_timeout_ms = 5000 # If no spawn for 5s, trigger cooldown
+        self.cooldown_duration_ms = 10000 # Cooldown for 10s
+        self.initial_accelerate_time = 500 #seconds
+        self.last_in_lane =[None for _ in range(self.highway.lane_count)]
+        
+        agent = TrafficAgent(
+                model=self,
+                position=np.array(highway.lanes[0].start_position) ,
+                goal=np.array(highway.lanes[0].end_position),
+                length=4500,
+                width=1700,
+                lane_intent=0,
+                spawn_time=self.total_time,
+                velocity=random.uniform(25, 30) if not populate_highway else 0
+        )
+
+        self.last_in_lane[0] = agent
+        self.highway.place_agent(agent, tuple(agent.vehicle.position))
+        self.agents.add(agent)
+        self.top_agent = agent
+        self.last_agent = agent
+
+        if(not populate_highway):
+            return
         # Defaults for vehicle size in mm
         default_length_mm = 4500.0
         default_width_mm = 1700.0
@@ -49,6 +77,7 @@ class TrafficModel(Model):
                 goal=end_position,
                 length=default_length_mm,
                 width=default_width_mm,
+                spawn_time=self.total_time,
                 lane_intent=lane_intent,
             )
 
@@ -57,18 +86,124 @@ class TrafficModel(Model):
 
 
             self.agents.add(agent)
+        # After populating, find the actual last agent in each lane
+        last_in_lane_list = []
+        for lane_idx in range(self.highway.lane_count):
+            agents_in_lane = [agent for agent in self.agents if agent.current_lane == lane_idx]
+            if agents_in_lane:
+                last_in_lane_list.append(min(agents_in_lane, key=lambda a: a.pos[1]))
+            else:
+                last_in_lane_list.append(None)
+        self.last_in_lane = last_in_lane_list
+
 
     def step(self):
         self.agents.do("step")
         self.steps += 1
         self.total_time +=self.dt
 
-        if self.agents:
+        
+        if self.is_generate_agents and self.agent_rate > 0:            
+
+            
+            # Time in ms between agent spawns
+            spawn_interval = 1000.0 / self.agent_rate
+            
+            # Check if it's time to try spawning a new agent
+            if self.total_time >= self.last_generated_agent_time + spawn_interval:
+             
+
+                # Find a clear lane to spawn in by checking them in a random order
+                available_lanes = [i for i in range(self.highway.lane_count) if i != self.last_agent.current_lane]
+                random.shuffle(available_lanes)
+                
+                for lane_idx in available_lanes:
+                    last_agent_in_lane = self.last_in_lane[lane_idx]
+
+                    # If there's a car in the lane, check if it's too close or too slow.
+                    if last_agent_in_lane:
+                        # If last car is too close to the start, this lane is blocked.
+                        if last_agent_in_lane.vehicle.position[1] <= last_agent_in_lane.vehicle.length * 1.75:
+                            continue # Try next lane
+                        # If last car is moving too slowly, this lane is blocked.
+                        if np.linalg.norm(last_agent_in_lane.vehicle.velocity) <= last_agent_in_lane.max_speed * 0.3:
+                            continue # Try next lane
+
+                        if(self.is_collision_ahead(last_agent_in_lane)):
+                           continue
+                        
+                    
+                    # This lane is clear for spawning.
+                    new_velocity = random.uniform(25, 30)
+                    if last_agent_in_lane:
+                        # Set velocity relative to the car that was last in this lane for smoother flow
+                        new_velocity = np.linalg.norm(last_agent_in_lane.vehicle.velocity) * 0.85
+
+                    lane = self.highway.lanes[lane_idx]
+                    agent = TrafficAgent(
+                            model=self,
+                            position=lane.start_position + np.array([0,100]),
+                            goal=lane.end_position,
+                            length=4500,
+                            width=1700,
+                            lane_intent=lane_idx,
+                            spawn_time=self.total_time,
+                            velocity=new_velocity
+                    )
+                    if(last_agent_in_lane):
+                        agent.vehicle.setAcceleration(last_agent_in_lane.vehicle.acceleration)
+                    self.last_in_lane[lane_idx] = agent
+                    self.highway.place_agent(agent, tuple(agent.vehicle.position))
+                    self.agents.add(agent)
+                    self.last_generated_agent_time = self.total_time
+                    self.last_agent = agent
+
+                    break # Exit the loop since we successfully spawned an agent.
+                
+
+
+
+        if len(self.agents) > 0:
             # Find the agent with the highest y-position value
             self.top_agent = max(self.agents, key=lambda agent: agent.pos[1])
         else:
             self.top_agent = None
         
+    def is_collision_ahead(self, agent: TrafficAgent) -> bool:
+        """
+        Checks if any pair of agents in the local vicinity of the given 'agent'
+        is currently colliding.
+        """
+        # Get all agents in the local area, including the reference agent.
+        local_agents = self.highway.get_neighbors(agent.pos, agent.vehicle.length * 12, include_center=True)
+        local_agents = [a for a in local_agents if a.current_lane == agent.current_lane or a.lane_intent == agent.lane_intent]
+
+        if len(local_agents) < 2:
+            return False  # Not enough agents to have a collision.
+
+        num_agents = len(local_agents)
+        # Check every unique pair of agents for a potential collision.
+        for i in range(num_agents):
+            for j in range(i + 1, num_agents):
+                agent_a = local_agents[i]
+                agent_b = local_agents[j]
+                # Use current positions
+                pos_a = agent_a.vehicle.position
+                pos_b = agent_b.vehicle.position
+
+                # Check for bounding box overlap (AABB collision detection)
+                half_width_a = agent_a.vehicle.width / 2
+                half_length_a = agent_a.vehicle.length / 2
+                half_width_b = agent_b.vehicle.width / 2
+                half_length_b = agent_b.vehicle.length / 2
+
+                if abs(pos_a[0] - pos_b[0]) < (half_width_a + half_width_b) and \
+                   abs(pos_a[1] - pos_b[1]) < (half_length_a + half_length_b):
+                    return True  # A collision is detected between this pair.
+
+        return False  # No collisions detected among any pair.
+
+
 
     def _find_clear_spawn(self, lane_idx: int, vehicle_length_mm: float, tries: int = 50):
         """

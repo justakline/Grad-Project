@@ -41,11 +41,14 @@ def init_simulation(sim_type):
         dt = 40 #ms
         n_agents = 60
         wrap_highway = False
+        populate_highway = True
+        generate_agents = True
+        goal_agent_rate = 10 # per second
 
         highway_width = highway_lanes * lane_size * 1.01 # 1.01 due to index out of bounds exceptions
         # Highway units are millimeters
         highway = Highway(highway_width, highway_length, wrap_highway, highway_lanes, lane_size)
-        simulation_model = TrafficModel(n_agents,1, dt, highway)
+        simulation_model = TrafficModel(n_agents,1, dt, highway,populate_highway, generate_agents, goal_agent_rate)
         simulation_type = 'traffic'
         return jsonify({
             'status': 'success',
@@ -107,7 +110,7 @@ def step_simulation():
             })
             avg_speed += speed
 
-        avg_speed /= len(simulation_model.agents)
+        avg_speed = 0 if len(agents_data) == 0 else avg_speed / len(simulation_model.agents)
         avg_speed *= 2.23694   #convert to miles per hour
         total_time = simulation_model.total_time / 1000 #convert to seconds
         aggregate_data.append({

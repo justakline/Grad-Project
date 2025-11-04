@@ -2,6 +2,8 @@ import random
 from typing import TYPE_CHECKING, Type
 
 import numpy as np
+
+
 from .Utils import to_unit, EPS
 from mesa import Agent
 
@@ -17,7 +19,7 @@ class TrafficAgent(Agent):
     model: TrafficModel
 
     def __init__(self, model: TrafficModel, position: np.ndarray, goal: np.ndarray,
-                 length: float, width: float, lane_intent: int):
+                 length: float, width: float, lane_intent: int, spawn_time, velocity = 0):
         super().__init__(model)
         dt = model.dt
 
@@ -25,6 +27,7 @@ class TrafficAgent(Agent):
         self.goal: np.ndarray = goal
         self.lane_intent = lane_intent
         self.current_lane = lane_intent
+        self.spawn_time = spawn_time
 
         # dynamics and sensing (mm, ms)
         self.max_speed = random.uniform(35, 45)  # mm/ms
@@ -35,9 +38,9 @@ class TrafficAgent(Agent):
 
         # NOTE: 1 mm/ms^2 = 1000 m/s^2. Realistic car acceleration is 1-3 m/s^2.
         # So we need values in the range of 0.001 to 0.003.
-        self.max_acceleration = random.uniform(0.001, 0.003)  # mm/ms^2 (Represents 1-3 m/s^2)
+        self.max_acceleration = random.uniform(0.0025, 0.004)  # mm/ms^2 (Represents 2.5-4 m/s^2)
         self.cruise_gain = random.uniform(0.0005, 0.0015)   # 1/ms
-        self.braking_comfortable = random.uniform(0.002, 0.004) # mm/ms^2 (Represents 2-4 m/s^2, a comfortable brake)
+        self.braking_comfortable = random.uniform(0.003, 0.0045) # mm/ms^2 (Represents 2-4 m/s^2, a comfortable brake)
         self.desired_time_headway = random.uniform(1200, 2400)  # ms
         self.time_headway = 1.2  # seconds (⚠ multiply speeds by 1000)
         self.reaction_time_ms = int(self.time_headway * 1000)  # ms
@@ -74,16 +77,25 @@ class TrafficAgent(Agent):
         self.initial_lane_x = self.vehicle.position[0]
 
         # small initial push along lane
-        self.vehicle.velocity = self.current_lane_vector() * self.desired_speed/10
-        print(self.current_lane_vector())
-        print(self.vehicle.velocity)
+        if(velocity == 0 ):
+            self.vehicle.velocity = self.current_lane_vector() * self.desired_speed/10
+        else:
+            self.vehicle.velocity = self.current_lane_vector() * velocity
+
+        # print(self.vehicle.velocity)
+        # print("hretr")
         # self.vehicle.changeAcceleration(self.current_lane_vector() * random.uniform(0.002, 0.008))
 
     # ---------- tick ----------
     def step(self) -> None:
+        from .DriveStrategies.CruiseStrategy import CruiseStrategy
+        from .DriveStrategies.AccelerateStrategy import AccelerateStrategy
+        from .DriveStrategies.BrakeStrategy import BrakeStrategy
         dt = self.model.dt  # ms
 
+ 
      
+    
         self.sense()
         self.action()
       
@@ -97,8 +109,8 @@ class TrafficAgent(Agent):
             # This is extra cleanup because if I only remove it, the follow vehicle still uses its end position, ie the finish line
             # As the follow position, and since there is no more changes to position, the follow vehicle would brake, this presents that
             if(not self.model.highway.is_torus):
-                print("removed")
-                self.pos = (self.model.highway.x_max *2, self.model.highway.y_max *2)
+                # print("removed")
+                # self.pos = (self.model.highway.x_max *2, self.model.highway.y_max *2)
                 self.remove_self()
                 return
             self.vehicle.position[1] = 0
@@ -106,7 +118,7 @@ class TrafficAgent(Agent):
         if type(self.current_drive_strategy) is not type(self.previous_drive_strategy):
             self.internal_timer = -1
             
-        self.model.highway.move_agent(self, self.vehicle.position)
+        self.model.highway.move_agent(self, tuple(self.vehicle.position))
         self.internal_timer += dt
 
     def sense(self) -> None:
@@ -117,6 +129,8 @@ class TrafficAgent(Agent):
         self.choose_drive_strategy()
         self.choose_lane_change_strategy()
         self.do_lane_change_strategy()
+        longitudinal_accel_magnitude = self.current_drive_strategy.calculate_accel(self)
+        self.vehicle.velocity[1] += longitudinal_accel_magnitude * self.model.dt
 
     
     def do_lane_change_strategy(self):
@@ -128,8 +142,6 @@ class TrafficAgent(Agent):
         # 2. Update longitudinal velocity (y-component)
         # 3. Get lateral velocity from the lane change strategy 
         
-        longitudinal_accel_magnitude = self.current_drive_strategy.calculate_accel(self)
-        self.vehicle.velocity[1] += longitudinal_accel_magnitude * self.model.dt
         self.vehicle.velocity[0] = self.lane_change_strategy.lateral_velocity
         
     def choose_drive_strategy(self):
@@ -138,8 +150,9 @@ class TrafficAgent(Agent):
         from .DriveStrategies.BrakeStrategy import BrakeStrategy
         self.previous_drive_strategy = self.current_drive_strategy
         self.lead, self.gap_to_lead = self.find_lead_and_gap()
-
-        if self.lead is None or self.gap_to_lead is None:
+        
+        # If we do not have a person in front of us or we are in the first x ms of spawning
+        if self.lead is None or self.gap_to_lead is None or self.spawn_time + self.model.initial_accelerate_time > self.model.total_time:
             self.assign_strategy(AccelerateStrategy) 
             return
 
@@ -150,6 +163,7 @@ class TrafficAgent(Agent):
         safe_dist = self.get_safe_following_distance()
         is_uncomfortable = self.is_uncomfortable_closing_speed(closing_speed, v_now)
         
+
         if self.gap_to_lead < safe_dist or is_uncomfortable:
             self.assign_strategy(BrakeStrategy)
         elif self.gap_to_lead < self.desired_gap:
@@ -176,11 +190,14 @@ class TrafficAgent(Agent):
         if(self.model.highway.is_torus):
             self.vehicle.position[1] = 0
         else:
-            print("removed")
+            # print("removed")
             # This is extra cleanup because if I only remove it, the follow vehicle still uses its end position, ie the finish line
             # As the follow position, and since there is no more changes to position, the follow vehicle would brake, this presents that
             self.pos = (self.model.highway.x_max *2, self.model.highway.y_max *2)
             self.remove()
+            # self.model.highway.remove_agent(self)
+    
+
             
     # ---------- helpers ----------
     def get_safe_following_distance(self):
@@ -220,7 +237,8 @@ class TrafficAgent(Agent):
 
     # def find_lead_and_gap(self, sense):
     def find_lead_and_gap(self, max_sense=200_000_000):
-        
+        if(len(self.model.agents) <= 1):
+            return None, None
         # Poll candidates until we find one in front of us
         sense = 10_000 # Start at 10 meters in front of me
         candidates = []
@@ -245,6 +263,10 @@ class TrafficAgent(Agent):
 
     def find_neighbors_in_lane(self, lane_idx):
         """Finds the immediate leader and follower in a given lane."""
+        if(len(self.model.agents) <= 1):
+            return None, None
+
+
         sense_dist = 150_000 # 150m
         neighbors = self.model.highway.get_neighbors(self.pos, sense_dist, False) 
         
