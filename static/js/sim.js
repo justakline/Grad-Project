@@ -2,6 +2,7 @@
 const canvas = document.getElementById("simulationCanvas");
 const ctx = canvas.getContext("2d");
 const statusDiv = document.getElementById("status");
+const initBtn = document.getElementById("initBtn");
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const stepCountSpan = document.getElementById("stepCount");
@@ -11,7 +12,6 @@ const viewport = document.getElementById("viewport");
 const vwInput = document.getElementById("vwInput");
 const vhInput = document.getElementById("vhInput");
 const applyViewportBtn = document.getElementById("applyViewport");
-const toggleSenseBtn = document.getElementById("toggleSense");
 
 const zoomSlider = document.getElementById("zoomSlider");
 const zoomInBtn = document.getElementById("zoomInBtn");
@@ -53,7 +53,6 @@ let isPanning = false,
   oxAtPan = 0,
   oyAtPan = 0;
 
-let showSensing = false;
 let lastAgents = [];
 
 // NEW: gate drawing until initialized
@@ -65,11 +64,6 @@ function setStatus(msg, active = false) {
   statusDiv.className = active ? "status active" : "status";
 }
 
-toggleSenseBtn.addEventListener("click", () => {
-  showSensing = !showSensing;
-  toggleSenseBtn.textContent = showSensing ? "Sensing: On" : "Sensing: Off";
-  redraw();
-});
 
 // Resize + HiDPI
 const ro = new ResizeObserver(() => layoutPreserveCenter());
@@ -183,6 +177,9 @@ window.addEventListener("mouseup", () => {
 
 // Backend
 async function initSimulation(type) {
+  if(isRunning){
+    return
+  }
   try {
     const res = await fetch(`/api/init/${type}`);
     const data = await res.json();
@@ -200,6 +197,7 @@ async function initSimulation(type) {
       setStatus(`${data.message}. Click Start to begin.`, true);
       startBtn.disabled = false;
       stopBtn.disabled = true;
+      initBtn.disabled = true;
       lastAgents = [];
       redraw();
     } else setStatus(`Error: ${data.message}`);
@@ -214,6 +212,7 @@ function startSimulation() {
   isRunning = true;
   startBtn.disabled = true;
   stopBtn.disabled = false;
+  initBtn.disabled = true;
   setStatus("Simulation running...", true);
   intervalId = setInterval(stepSimulation, pollingMs);
 }
@@ -222,6 +221,7 @@ function stopSimulation() {
   isRunning = false;
   startBtn.disabled = false;
   stopBtn.disabled = true;
+  initBtn.disabled = true;
   setStatus("Simulation paused");
   if (intervalId) {
     clearInterval(intervalId);
@@ -239,6 +239,7 @@ async function resetSimulation() {
       simReady = false; // <— back to blank
       startBtn.disabled = true;
       stopBtn.disabled = true;
+      initBtn.disabled = false;
       stepCountSpan.textContent = "0";
       agentCountSpan.textContent = "0";
       aggregateData.textContent = "0"
@@ -401,21 +402,6 @@ function drawAgents() {
     const [px, py] = worldToScreen(a.x, a.y);
     const halfL = Math.max(0.5, (a.length * s - 1) / 2);
     const halfW = (a.width * s) / 2;
-
-    if (showSensing && Number.isFinite(a.sensing_distance)) {
-      const r = a.sensing_distance * s;
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(px, py, r, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(33,150,243,0.12)";
-      ctx.strokeStyle = "rgba(33,150,243,0.35)";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([6, 6]);
-      ctx.fill();
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ctx.restore();
-    }
 
     var color =
       {

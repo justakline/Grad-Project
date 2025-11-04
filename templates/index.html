@@ -19,11 +19,8 @@
       <div class="controls">
         <div class="row">
           <div class="upper-wrap">
-            <button class="btn-traffic" onclick="initSimulation('traffic')">
+            <button class="btn-traffic" id="initBtn" onclick="initSimulation('traffic')">
               Initialize Traffic
-            </button>
-            <button class="btn-demo" onclick="initSimulation('demo')">
-              Initialize Demo
             </button>
             <button
               class="btn-start"
@@ -42,7 +39,6 @@
               Stop
             </button>
             <button class="btn-reset" onclick="resetSimulation()">Reset</button>
-            <button id="toggleSense">Sensing: On</button>
           </div>
 
           <div class="zoom-wrap">
