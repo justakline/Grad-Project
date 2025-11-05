@@ -36,14 +36,14 @@ def init_simulation(sim_type):
         from src.Agent_Based_Traffic_Simulation.core.Highway import Highway
 
         highway_length = 200_000
-        highway_lanes = 3
+        highway_lanes = 5
         lane_size = 3657
         dt = 40 #ms
-        n_agents = 60
+        n_agents = 50
         wrap_highway = False
         populate_highway = True
         generate_agents = True
-        goal_agent_rate = 10 # per second
+        goal_agent_rate = 14 # per second
 
         highway_width = highway_lanes * lane_size * 1.01 # 1.01 due to index out of bounds exceptions
         # Highway units are millimeters

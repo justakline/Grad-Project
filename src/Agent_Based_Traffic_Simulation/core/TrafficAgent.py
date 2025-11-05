@@ -77,6 +77,7 @@ class TrafficAgent(Agent):
         self.initial_lane_x = self.vehicle.position[0]
 
         # small initial push along lane
+        
         if(velocity == 0 ):
             self.vehicle.velocity = self.current_lane_vector() * self.desired_speed/10
         else:
