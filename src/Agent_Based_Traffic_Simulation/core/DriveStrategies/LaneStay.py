@@ -26,12 +26,13 @@ class LaneStay(AbstractLaneChange):
             return
 
         # COMMITMENT: If a lane change is already in progress, do not evaluate a new one.
-        # This prevents "wiggling" back and forth.
+        # This prevents wiggling back and forth.
         if isinstance(traffic_agent.lane_change_strategy, LaneChangeStrategy):
             return
 
         # --- 1. Evaluate Incentive to Change Lanes ---
-        current_accel = traffic_agent.current_drive_strategy.calculate_accel(traffic_agent)
+        # current_accel = traffic_agent.current_drive_strategy.calculate_accel(traffic_agent)
+        current_accel = np.linalg.norm(traffic_agent.vehicle.acceleration)
         
         best_gain = -np.inf
         best_target_lane = -1
@@ -70,7 +71,7 @@ class LaneStay(AbstractLaneChange):
             follower_loss = 0.0
             if new_follower is not None:
                 # Follower's current acceleration in their own lane
-                accel_new_follower_current = new_follower.current_drive_strategy.calculate_accel(new_follower)
+                accel_new_follower_current = np.linalg.norm(new_follower.vehicle.acceleration)
                 follower_loss = accel_new_follower_current - accel_new_follower
 
             incentive = my_gain - (traffic_agent.politeness_factor * follower_loss)
@@ -106,7 +107,8 @@ class LaneStay(AbstractLaneChange):
         follower.gap_to_lead = (ego_agent.pos[1] - ego_agent.vehicle.length / 2) - (follower.pos[1] + follower.vehicle.length / 2)
         
         # Use the follower's current strategy to calculate potential acceleration
-        potential_accel = follower.current_drive_strategy.calculate_accel(follower)
+        # potential_accel = follower.current_drive_strategy.calculate_accel(follower)
+        potential_accel = np.linalg.norm(follower.vehicle.acceleration)
         
         # Restore original leader
         follower.lead = original_leader
@@ -128,7 +130,8 @@ class LaneStay(AbstractLaneChange):
         else:
             ego_agent.gap_to_lead = None
 
-        potential_accel = ego_agent.current_drive_strategy.calculate_accel(ego_agent)
+        # potential_accel = ego_agent.current_drive_strategy.calculate_accel(ego_agent)
+        potential_accel = np.linalg.norm(ego_agent.vehicle.acceleration)
 
         # Restore original state
         ego_agent.lead = original_leader

@@ -128,11 +128,14 @@ class TrafficAgent(Agent):
 
     def action(self) -> None:
         self.choose_drive_strategy()
+        self.do_drive_strategy()
         self.choose_lane_change_strategy()
         self.do_lane_change_strategy()
         longitudinal_accel_magnitude = self.current_drive_strategy.calculate_accel(self)
         self.vehicle.velocity[1] += longitudinal_accel_magnitude * self.model.dt
 
+    def do_drive_strategy(self):
+        self.current_drive_strategy.step(self)
     
     def do_lane_change_strategy(self):
         # This will set a lateral_velocity on the lane_change_strategy if a change is active
