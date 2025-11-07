@@ -25,9 +25,10 @@ class LaneChangeStrategy(AbstractLaneChange):
             # Finalize lane change
             traffic_agent.vehicle.position[0] = self.target_x
             traffic_agent.current_lane = traffic_agent.lane_intent
-            from .LaneStay import LaneStay
+            
+            from .LaneStayStrategy import LaneStayStrategy
             self.lateral_velocity = 0.0
-            traffic_agent.lane_change_strategy = LaneStay()
+            traffic_agent.lane_change_strategy = LaneStayStrategy()
             return
 
         longitudinal_velocity = traffic_agent.vehicle.velocity[1]

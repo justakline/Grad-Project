@@ -61,10 +61,11 @@ class TrafficAgent(Agent):
 
         # strategies
         from .DriveStrategies.CruiseStrategy import CruiseStrategy
-        from .DriveStrategies.LaneStay import LaneStay
+        from .LaneChangeStrategies.LaneStayStrategy import LaneStayStrategy
+
         self.previous_drive_strategy = CruiseStrategy()
         self.current_drive_strategy = CruiseStrategy()
-        self.lane_change_strategy = LaneStay()
+        self.lane_change_strategy = LaneStayStrategy()
 
         # tracking
         self.lead = None

@@ -3,14 +3,14 @@ import random
 import numpy as np
 from ..Highway import Highway
 from ..TrafficAgent import TrafficAgent
-from ..DriveStrategies.AbstractLaneChange import AbstractLaneChange
-from ..DriveStrategies.LaneChangeStrategy import LaneChangeStrategy
+from .AbstractLaneChange import AbstractLaneChange
+from .LaneChangeStrategy import LaneChangeStrategy
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..TrafficAgent import TrafficAgent
 
-class LaneStay(AbstractLaneChange):
+class LaneStayStrategy(AbstractLaneChange):
     """
     Default lateral strategy. Agent stays in its lane while checking
     for opportunities to change lanes based on the MOBIL model.
