@@ -1,4 +1,5 @@
 
+import random
 import numpy as np
 from ..Highway import Highway
 from ..TrafficAgent import TrafficAgent
@@ -18,7 +19,7 @@ class LaneStay(AbstractLaneChange):
     def __init__(self): # Default 2 second lane change
 
         self.lateral_velocity = 0.0
-
+        self.random_lane_change_percent = 1 / 100.0
         
     def step(self, traffic_agent: "TrafficAgent"):
         # Only check for lane changes on the agent's decision tick
@@ -31,12 +32,13 @@ class LaneStay(AbstractLaneChange):
             return
 
         # --- 1. Evaluate Incentive to Change Lanes ---
-        # current_accel = traffic_agent.current_drive_strategy.calculate_accel(traffic_agent)
-        current_accel = np.linalg.norm(traffic_agent.vehicle.acceleration)
+        current_accel = traffic_agent.current_drive_strategy.calculate_accel(traffic_agent)
         
         best_gain = -np.inf
         best_target_lane = -1
+
         
+        safe_lanes = []
         gains = {}
 
         # Check left and right lanes
@@ -58,6 +60,8 @@ class LaneStay(AbstractLaneChange):
                 # comfortable braking limit, the lane change is unsafe.
                 if accel_new_follower is not None and (accel_new_follower < -new_follower.braking_comfortable or not self.is_trajectory_safe(traffic_agent, new_follower)):
                     continue # Unsafe, check next lane
+            safe_lanes.append(target_lane_idx)
+
 
             # --- 4. Check Incentive Criterion ---
             # What is my acceleration if I change?
@@ -70,14 +74,13 @@ class LaneStay(AbstractLaneChange):
             
             follower_loss = 0.0
             if new_follower is not None:
-                # Follower's current acceleration in their own lane
-                accel_new_follower_current = np.linalg.norm(new_follower.vehicle.acceleration)
+                # Follower's current acceleration, calculated for their actual leader
+                accel_new_follower_current = new_follower.current_drive_strategy.calculate_accel(new_follower)
                 follower_loss = accel_new_follower_current - accel_new_follower
 
             incentive = my_gain - (traffic_agent.politeness_factor * follower_loss)
-            
 
-
+            # Update the best lane change
             if incentive > traffic_agent.lane_change_threshold and my_gain > best_gain:
                 best_gain = my_gain
                 best_target_lane = target_lane_idx
@@ -87,12 +90,23 @@ class LaneStay(AbstractLaneChange):
             gains[target_lane_idx] = my_gain
 
         # --- 5. Execute Lane Change if beneficial ---
-        if best_target_lane != -1:
+        if(len(safe_lanes) > 0 and random.random() < self.random_lane_change_percent): # randomly let someone change lanes if its safe
+            random_index = random.randint(0, len(safe_lanes) - 1)
+            best_target_lane = safe_lanes[random_index]
+            self.begin_lane_change(traffic_agent, best_target_lane)
+
+        elif best_target_lane != -1:
             best_target_lane = max(gains, key=gains.get)
-            target_lane_x = traffic_agent.model.highway.lanes[best_target_lane].start_position[0]
-            traffic_agent.lane_intent = best_target_lane
-            traffic_agent.initial_lane_x = traffic_agent.vehicle.position[0]
-            traffic_agent.lane_change_strategy = LaneChangeStrategy(target_lane_x)
+            self.begin_lane_change(traffic_agent, best_target_lane)
+
+
+
+
+    def begin_lane_change(self, traffic_agent: "TrafficAgent", best_target_lane: int):
+        target_lane_x = traffic_agent.model.highway.lanes[best_target_lane].start_position[0]
+        traffic_agent.lane_intent = best_target_lane
+        traffic_agent.initial_lane_x = traffic_agent.vehicle.position[0]
+        traffic_agent.lane_change_strategy = LaneChangeStrategy(target_lane_x)
 
     def get_follower_accel(self, ego_agent: "TrafficAgent", follower: "TrafficAgent") -> float:
         """
@@ -107,8 +121,7 @@ class LaneStay(AbstractLaneChange):
         follower.gap_to_lead = (ego_agent.pos[1] - ego_agent.vehicle.length / 2) - (follower.pos[1] + follower.vehicle.length / 2)
         
         # Use the follower's current strategy to calculate potential acceleration
-        # potential_accel = follower.current_drive_strategy.calculate_accel(follower)
-        potential_accel = np.linalg.norm(follower.vehicle.acceleration)
+        potential_accel = follower.current_drive_strategy.calculate_accel(follower)
         
         # Restore original leader
         follower.lead = original_leader
@@ -130,8 +143,7 @@ class LaneStay(AbstractLaneChange):
         else:
             ego_agent.gap_to_lead = None
 
-        # potential_accel = ego_agent.current_drive_strategy.calculate_accel(ego_agent)
-        potential_accel = np.linalg.norm(ego_agent.vehicle.acceleration)
+        potential_accel = ego_agent.current_drive_strategy.calculate_accel(ego_agent)
 
         # Restore original state
         ego_agent.lead = original_leader

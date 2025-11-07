@@ -57,7 +57,7 @@ class TrafficAgent(Agent):
 
         # Lane change parameters
         self.politeness_factor = random.uniform(0.02, 0.5) # 0 is egoistic, >1 is altruistic
-        self.lane_change_threshold = random.uniform(0.00005, 0.0009) # Min acceleration gain to justify a change
+        self.lane_change_threshold = random.uniform(0.00001, 0.0003) # Min acceleration gain to justify a change
 
         # strategies
         from .DriveStrategies.CruiseStrategy import CruiseStrategy
@@ -179,6 +179,27 @@ class TrafficAgent(Agent):
 
     def choose_lane_change_strategy(self):
         pass
+    
+    def is_in_same_lane(self, other_agent: "TrafficAgent") -> bool:
+        """
+        Checks if another agent is at least partially within the boundaries of this agent's current lane.
+        This is more robust than just checking lane indices, as it accounts for agents
+        that are in the middle of a lane change.
+        """
+        # Get properties of the ego agent's current lane
+        lane = self.model.highway.lanes[self.current_lane]
+        lane_width = lane.lane_width
+        lane_center_x = lane.start_position[0]
+
+        # Calculate the x-boundaries of the lane
+        lane_min_x = lane_center_x - lane_width / 2
+        lane_max_x = lane_center_x + lane_width / 2
+
+        # Check if the other agent's bounding box overlaps with the lane's x-range
+        other_agent_min_x = other_agent.vehicle.position[0] - other_agent.vehicle.width / 2
+        other_agent_max_x = other_agent.vehicle.position[0] + other_agent.vehicle.width / 2
+
+        return other_agent_max_x > lane_min_x and other_agent_min_x < lane_max_x
 
     def check_outside_of_bounds(self) -> bool:
         if (
@@ -249,7 +270,7 @@ class TrafficAgent(Agent):
         while len(candidates) == 0 and sense < max_sense:
             candidates = self.model.highway.get_neighbors(self.pos, sense, False)
             candidates = list(filter(
-                lambda a: a.pos[1] > self.pos[1] and a.current_lane == self.current_lane,
+                lambda a: a.pos[1] > self.pos[1] and self.is_in_same_lane(a),
                 candidates
             ))
             sense *= 2

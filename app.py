@@ -9,6 +9,7 @@ import traceback
 
 import numpy as np
 import logging
+import copy
 logging.getLogger("werkzeug").setLevel(logging.ERROR)
 logging.getLogger("werkzeug").disabled = True
 
@@ -77,7 +78,7 @@ def step_simulation():
         agents_data = []
         aggregate_data = []
         avg_speed = 0
-        for agent in simulation_model.agents:
+        for agent in copy.deepcopy(simulation_model.agents):
           
             # Real-world values straight from the model (mm, mm/ms)
             x = float(agent.vehicle.position[0])
