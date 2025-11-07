@@ -29,6 +29,7 @@ class TrafficAgent(Agent):
         self.current_lane = lane_intent
         self.spawn_time = spawn_time
 
+        self.is_removed = False
         # dynamics and sensing (mm, ms)
         self.max_speed = random.uniform(35, 45)  # mm/ms
         # NOTE: 1 mm/ms = 1 m/s. At 35 m/s, a car travels 70m in 2s. Sensing distance should be generous.
@@ -84,9 +85,7 @@ class TrafficAgent(Agent):
         else:
             self.vehicle.velocity = self.current_lane_vector() * velocity
 
-        # print(self.vehicle.velocity)
-        # print("hretr")
-        # self.vehicle.changeAcceleration(self.current_lane_vector() * random.uniform(0.002, 0.008))
+
 
     # ---------- tick ----------
     def step(self) -> None:
@@ -106,16 +105,10 @@ class TrafficAgent(Agent):
             self.vehicle.velocity[1] = max(0, self.vehicle.velocity[1])
         self.vehicle.position += self.vehicle.velocity * dt
 
-        # Check for out of bounds and either remove or adjust
+        # Check for out of bounds and remove 
         if (self.check_outside_of_bounds()):
-            # This is extra cleanup because if I only remove it, the follow vehicle still uses its end position, ie the finish line
-            # As the follow position, and since there is no more changes to position, the follow vehicle would brake, this presents that
-            if(not self.model.highway.is_torus):
-                # print("removed")
-                # self.pos = (self.model.highway.x_max *2, self.model.highway.y_max *2)
-                self.remove_self()
-                return
-            self.vehicle.position[1] = 0
+            self.remove_self() # This will now mark the agent for removal
+            return
                 
         if type(self.current_drive_strategy) is not type(self.previous_drive_strategy):
             self.internal_timer = -1
@@ -203,6 +196,8 @@ class TrafficAgent(Agent):
         return other_agent_max_x > lane_min_x and other_agent_min_x < lane_max_x
 
     def check_outside_of_bounds(self) -> bool:
+      
+
         if (
             self.vehicle.position[0] >= self.model.highway.x_max
             or self.vehicle.position[0] <= self.model.highway.x_min
@@ -213,19 +208,9 @@ class TrafficAgent(Agent):
         return False
 
     def remove_self(self):
-        if(self.model.highway.is_torus):
-            self.vehicle.position[1] = 0
-        else:
-            # print("removed")
-            # This is extra cleanup because if I only remove it, the follow vehicle still uses its end position, ie the finish line
-            # As the follow position, and since there is no more changes to position, the follow vehicle would brake, this presents that
-            self.pos = (self.model.highway.x_max *2, self.model.highway.y_max *2)
-            self.remove()
-            # self.model.highway.remove_agent(self)
-    
+        # Mark it for removal because if we remove it now, then other's could still have references to it
+        self.is_removed = True
 
-            
-    # ---------- helpers ----------
     def get_safe_following_distance(self):
         """
         Calculates safe following distance using the Intelligent Driver Model (IDM) approach.

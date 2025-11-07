@@ -77,6 +77,9 @@ class TrafficModel(Model):
         self.steps += 1
         self.total_time +=self.dt
 
+        # Safely remove agents that have been marked for removal during the previous step
+        self.remove_out_of_bounds_agents()
+
         if self.is_generate_agents and self.agent_rate > 0:            
             # Time in ms between agent spawns
             spawn_interval = 1000.0 / self.agent_rate
@@ -94,6 +97,14 @@ class TrafficModel(Model):
         else:
             self.top_agent = None
     
+    def remove_out_of_bounds_agents(self):
+        agents_to_remove = [agent for agent in self.agents if agent.is_removed]
+        for agent in agents_to_remove:
+            self.highway.remove_agent(agent)
+            self.agents.remove(agent)
+            # Update last_in_lane if the removed agent was the last one
+            if self.last_in_lane[agent.current_lane] == agent:
+                self.last_in_lane[agent.current_lane] = None
 
     def create_agent(self, lane_idx: int, new_velocity: float=0):
         lane = self.highway.lanes[lane_idx]
@@ -143,8 +154,10 @@ class TrafficModel(Model):
                 new_velocity = np.linalg.norm(last_agent_in_lane.vehicle.velocity) * 0.85
 
             agent = self.create_agent(lane_idx, new_velocity)
+
+            # Make sure they are slowing down if the agent in fron is slowing down
             if(last_agent_in_lane):
-                agent.vehicle.setAcceleration(last_agent_in_lane.vehicle.acceleration)
+                agent.assign_strategy(type(last_agent_in_lane.current_drive_strategy))
             self.last_in_lane[lane_idx] = agent
             self.highway.place_agent(agent, tuple(agent.vehicle.position))
             self.agents.add(agent)

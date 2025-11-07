@@ -7,14 +7,14 @@ from typing import List
 class Highway(ContinuousSpace):
 
 
-    def __init__(self, x_max: int, y_max: int, torus: bool, lane_count: int, lane_width: int):
-        super().__init__(x_max, y_max, torus)
+    def __init__(self, x_max: int, y_max: int, lane_count: int, lane_width: int):
+        super().__init__(x_max, y_max, False)
 
         self.x_max: int = int(x_max)
         self.y_max: int = int(y_max)
         self.lane_count: int = int(lane_count)
         self.lane_width: float = float(lane_width)
-        self.is_torus = torus
+
         total_lane_w = self.lane_count * self.lane_width
 
         # If total lanes are wider than highway, clamp shoulder at 0 (still draw; caller should fix sizes)
