@@ -3,7 +3,8 @@ from typing import TYPE_CHECKING, Type
 
 import numpy as np
 
-
+from .Personalities import DefensivePersonality
+from .Personalities.AbstractPersonality import AbstractPersonality
 from .Utils import to_unit, EPS
 from mesa import Agent
 
@@ -19,7 +20,7 @@ class TrafficAgent(Agent):
     model: TrafficModel
 
     def __init__(self, model: TrafficModel, position: np.ndarray, goal: np.ndarray,
-                 length: float, width: float, lane_intent: int, spawn_time, velocity = 0):
+                 length: float, width: float, lane_intent: int, spawn_time, personality: AbstractPersonality = None, velocity = 0):
         super().__init__(model)
         dt = model.dt
 
@@ -30,35 +31,25 @@ class TrafficAgent(Agent):
         self.spawn_time = spawn_time
 
         self.is_removed = False
-        # dynamics and sensing (mm, ms)
-        self.max_speed = random.uniform(35, 45)  # mm/ms
-        # NOTE: 1 mm/ms = 1 m/s. At 35 m/s, a car travels 70m in 2s. Sensing distance should be generous.
-        self.sensing_distance = random.uniform(50_000, 100_000)  # mm (100-200 meters)
-        self.emergency_sensing_distance = 2* self.sensing_distance  # mm (200-300 meters)
-        self.desired_speed = random.uniform(0.75, 0.95) * self.max_speed
 
-        # NOTE: 1 mm/ms^2 = 1000 m/s^2. Realistic car acceleration is 1-3 m/s^2.
-        # So we need values in the range of 0.001 to 0.003.
-        self.max_acceleration = random.uniform(0.0025, 0.004)  # mm/ms^2 (Represents 2.5-4 m/s^2)
-        self.cruise_gain = random.uniform(0.0005, 0.0015)   # 1/ms
-        self.braking_comfortable = random.uniform(0.003, 0.0045) # mm/ms^2 (Represents 2-4 m/s^2, a comfortable brake)
-        self.desired_time_headway = random.uniform(1200, 2400)  # ms
-        self.time_headway = 1.2  # seconds (⚠ multiply speeds by 1000)
-        self.reaction_time_ms = int(self.time_headway * 1000)  # ms
-        self.b_max = random.uniform(0.008, 0.010)  # mm/ms^2 (Represents 8-10 m/s^2, max emergency braking)
-        self.desired_gap =  self.vehicle.length *random.uniform(2, 3.2)  # mm
+        # --- Personality ---
+        self.personality = personality if personality is not None else DefensivePersonality()
+        self.personality.vehicle = self.vehicle # Give personality access to vehicle properties
 
-
-        # control params
-        # This value was 3.00, which is 3000 m/s^2. Assuming it's unused or a typo. Commenting out for safety.
-        # self.acceleration_increase = 3.00  # mm/ms^2
-        self.smallest_follow_distance = self.vehicle.length *random.uniform(1, 1.4)  # mm
-        self.slow_brake_distance_start = 12000  # mm (12 meters)
-        self.hard_brake_distance_start = 5000  # mm (5 meters)
-
-        # Lane change parameters
-        self.politeness_factor = random.uniform(0.02, 0.5) # 0 is egoistic, >1 is altruistic
-        self.lane_change_threshold = random.uniform(0.00001, 0.0003) # Min acceleration gain to justify a change
+        self.max_speed = personality.max_speed
+        self.desired_speed = personality.desired_speed
+        self.sensing_distance = personality.sensing_distance
+        self.max_acceleration = personality.max_acceleration
+        self.cruise_gain = personality.cruise_gain
+        self.braking_comfortable = personality.braking_comfortable
+        self.b_max = personality.b_max
+        self.desired_time_headway = personality.desired_time_headway
+        self.smallest_follow_distance = self.vehicle.length * self.personality.smallest_follow_distance_factor
+        self.desired_gap = self.vehicle.length * self.personality.desired_gap_factor
+        self.politeness_factor = personality.politeness_factor
+        self.lane_change_threshold = personality.lane_change_threshold
+        self.decision_time = personality.decision_time
+     
 
         # strategies
         from .DriveStrategies.CruiseStrategy import CruiseStrategy
@@ -74,7 +65,6 @@ class TrafficAgent(Agent):
         self.gap_to_lead = None  # center-to-center, longitudinal mm
 
         # decision cadence
-        self.decision_time = random.randint(125, 250)  # ms
         self.internal_timer = self.decision_time
         self.initial_lane_x = self.vehicle.position[0]
 
@@ -118,7 +108,7 @@ class TrafficAgent(Agent):
 
     def sense(self) -> None:
         self.previous_drive_strategy = self.current_drive_strategy
-        self.lead, self.gap_to_lead = self.find_lead_and_gap()
+        self.lead, self.gap_to_lead = self.find_lead_and_gap(self.sensing_distance)
 
     def action(self) -> None:
         self.choose_drive_strategy()
@@ -147,7 +137,7 @@ class TrafficAgent(Agent):
         from .DriveStrategies.AccelerateStrategy import AccelerateStrategy
         from .DriveStrategies.BrakeStrategy import BrakeStrategy
         self.previous_drive_strategy = self.current_drive_strategy
-        self.lead, self.gap_to_lead = self.find_lead_and_gap()
+        self.lead, self.gap_to_lead = self.find_lead_and_gap(self.sensing_distance)
         
         # If we do not have a person in front of us or we are in the first x ms of spawning
         if self.lead is None or self.gap_to_lead is None or self.spawn_time + self.model.initial_accelerate_time > self.model.total_time:
@@ -278,7 +268,7 @@ class TrafficAgent(Agent):
             return None, None
 
 
-        sense_dist = 150_000 # 150m
+        sense_dist = self.sensing_distance
         neighbors = self.model.highway.get_neighbors(self.pos, sense_dist, False) 
         
         # Filter for agents in the target lane

@@ -3,6 +3,9 @@ import numpy as np
 from mesa import Model
 from .Highway import Highway
 from .TrafficAgent import TrafficAgent
+from .Personalities import DefensivePersonality, AggressivePersonality
+
+
 
 
 class TrafficModel(Model):
@@ -112,6 +115,8 @@ class TrafficModel(Model):
         vehicle_aspect_ratio = random.uniform(2.2, 2.7)
         new_width = random.randint(1700, 2700)
         new_length = vehicle_aspect_ratio * new_width
+        personality = DefensivePersonality()
+
 
         return TrafficAgent(
                             model=self,
@@ -121,6 +126,7 @@ class TrafficModel(Model):
                             width=new_width,
                             lane_intent=lane_idx,
                             spawn_time=self.total_time,
+                            personality=personality,
                             velocity=new_velocity
                     )
    

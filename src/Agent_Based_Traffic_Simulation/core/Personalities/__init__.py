@@ -1,0 +1,3 @@
+from .AbstractPersonality import AbstractPersonality
+from .DefensivePersonality import DefensivePersonality
+from .AggressivePersonality import AggressivePersonality
