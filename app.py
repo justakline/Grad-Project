@@ -6,6 +6,7 @@ import warnings
 from flask import Flask, render_template, jsonify
 from flask_cors import CORS
 import traceback
+from src.Agent_Based_Traffic_Simulation.core.Logger import Logger
 
 import numpy as np
 import logging
@@ -23,6 +24,9 @@ warnings.filterwarnings("ignore", category=UserWarning)
 
 simulation_model = None
 simulation_type = None
+dt = 40 #ms
+logger = Logger( dt)
+
 
 @app.route('/')
 def index():
@@ -39,8 +43,9 @@ def init_simulation(sim_type):
         highway_length = 200_000
         highway_lanes = 5
         lane_size = 3657
-        dt = 40 #ms
+ 
         n_agents = 50
+
 
         populate_highway = True
         generate_agents = True
@@ -51,6 +56,7 @@ def init_simulation(sim_type):
         highway = Highway(highway_width, highway_length, highway_lanes, lane_size)
         simulation_model = TrafficModel(n_agents,1, dt, highway,populate_highway, generate_agents, goal_agent_rate)
         simulation_type = 'traffic'
+
         return jsonify({
             'status': 'success',
             'message': 'Traffic simulation initialized',
@@ -74,6 +80,8 @@ def step_simulation():
 
     try:
         simulation_model.step()
+        logger.log_agents(simulation_model)
+
 
         agents_data = []
         aggregate_data = []

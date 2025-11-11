@@ -8,6 +8,7 @@ from .Personalities import DefensivePersonality, AggressivePersonality
 
 
 
+
 class TrafficModel(Model):
     """
     All spatial units are in millimeters; time in milliseconds.
@@ -73,6 +74,7 @@ class TrafficModel(Model):
             else:
                 last_in_lane_list.append(None)
         self.last_in_lane = last_in_lane_list
+
 
 
     def step(self):
