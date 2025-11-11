@@ -3,7 +3,7 @@ import os
 import json
 import math
 import warnings
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 import traceback
 from src.Agent_Based_Traffic_Simulation.core.Logger import Logger
@@ -40,13 +40,19 @@ def init_simulation(sim_type):
     
         from src.Agent_Based_Traffic_Simulation.core.TrafficModel import TrafficModel
         from src.Agent_Based_Traffic_Simulation.core.Highway import Highway
+        print(request.args)
 
-        highway_length = 200_000
-        highway_lanes = 5
-        lane_size = 3657
- 
-        n_agents = 80
+        dt = int(request.args.get('dt', 40))
+        highway_length = int(request.args.get('highway_length', 200_000))
+        highway_lanes = int(request.args.get('number_of_lanes', 3))
+        lane_size = int(request.args.get('size_of_lanes', 3657))
+        n_agents = int(request.args.get('n_agents', 0))
 
+        is_logging = bool(request.args.get('is_logging_agents', False))
+        logging_dt = int(request.args.get('logging_dt', 40))
+
+        aggressive_pct = int(request.args.get('aggressive_pct', 30))
+        agent_rate = int(request.args.get('agent_rate', 5))
 
         populate_highway = True
         generate_agents = True

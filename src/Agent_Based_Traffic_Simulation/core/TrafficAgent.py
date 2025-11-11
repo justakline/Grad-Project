@@ -10,7 +10,6 @@ from mesa import Agent
 
 # from Agent_Based_Traffic_Simulation.core.DriveStrategies import AbstractDriveStrategy
 from . import TrafficModel
-from .Vehicle import Vehicle
 from .VehicleTypes import AbstractVehicle, SUV, Truck,  Motorcycle
 
 if TYPE_CHECKING:

@@ -19,12 +19,30 @@ const zoomOutBtn = document.getElementById("zoomOutBtn");
 const zoomLabel = document.getElementById("zoomLabel");
 const resetViewBtn = document.getElementById("resetViewBtn");
 
+
+const toggleSettingsBtn = document.getElementById("toggleSettingsBtn");
+const settingsPanel = document.getElementById("settingsPanel");
+const driverMix = document.getElementById("driverMix");
+const driverMixValue = document.getElementById("driverMixValue");
+const applySettingsBtn = document.getElementById("applySettingsBtn");
+
 // State
 const driveStrategyColorMap = {
-  hard_brake: "#ef4444",
   brake: "#f77926",
   accelerate: "#22c55e",
   cruise: "#eab308",
+};
+
+let settings = {
+  dt: 0,
+  aggressivePct: 0,
+  agentRate: 0,
+  nAgents: 0,
+  highwayLength: 0,
+  laneNumber: 0,
+  laneSize: 0,
+  isLogging: true,
+  logDt: 0,
 };
 
 let isRunning = false,
@@ -175,14 +193,79 @@ window.addEventListener("mouseup", () => {
   viewport.classList.remove("panning");
 });
 
+// Open/close on click
+toggleSettingsBtn.addEventListener("click", (e) => {
+  e.stopPropagation();
+  // ensure it is not display:none
+  settingsPanel.classList.remove("hidden");
+  // animate visible state
+  settingsPanel.classList.toggle("active");
+});
+
+// Close when clicking outside
+document.addEventListener("click", (e) => {
+  if (!settingsPanel.classList.contains("active")) return;
+  const clickedButton = e.target === toggleSettingsBtn;
+  const clickedInsidePanel = settingsPanel.contains(e.target);
+  if (!clickedButton && !clickedInsidePanel) {
+    settingsPanel.classList.remove("active");
+    // keep it present in DOM for animation; do not re-add 'hidden' here
+  }
+});
+
+// Keep your existing slider label update
+driverMix.addEventListener("input", (e) => {
+  driverMixValue.textContent = e.target.value + "%";
+});
+
+// On Apply - read values and close
+applySettingsBtn.addEventListener("click", () => {
+  setSettings()
+
+  // close the card
+  settingsPanel.classList.remove("active");
+  
+});
+
+function setSettings(){
+    settings.dt = parseInt(document.getElementById("dtInput").value);
+  settings.aggressivePct = parseInt(driverMix.value);
+  settings.agentRate = parseInt(document.getElementById("agentRate").value);
+  settings.nAgents = parseInt(document.getElementById("numAgents").value);
+  settings.highwayLength = parseInt(document.getElementById("highwayLength").value) * 1000; // Conversion to mm
+  settings.laneNumber = parseInt(document.getElementById("laneNumber").value);
+  settings.laneSize = parseInt(document.getElementById("laneSize").value)* 1000; // Conversion to mm
+  settings.isLogging = document.getElementById("isLogging").checked;
+  settings.logDt = parseInt(document.getElementById("logDt").value);
+
+  // close the card
+  settingsPanel.classList.remove("active");
+}
+
 // Backend
 async function initSimulation(type) {
   if(isRunning){
     return
   }
   try {
-    const res = await fetch(`/api/init/${type}`);
+    // const res = await fetch(`/api/init/${type}`);
+    setSettings()
+    const params = new URLSearchParams({
+      dt: settings.dt,
+      aggressive_pct: settings.aggressivePct,
+      agent_rate: settings.agentRate,
+      n_agents: settings.nAgents,
+      highway_length : settings.highwayLength,
+      number_of_lanes: settings.laneNumber,
+      size_of_lanes: settings.laneSize,
+      is_logging_agents: settings.isLogging,
+      logging_dt: settings.logDt
+
+    });
+    const res = await fetch(`/api/init/${type}?${params.toString()}`);
     const data = await res.json();
+
+
     if (data.status === "success") {
       simType = type;
       maxX = data.x_max;
@@ -405,15 +488,11 @@ function drawAgents() {
 
     var color =
       {
-        hard_brake: "#ef4444",
         brake: "#f77926",
         accelerate: "#22c55e",
         cruise: "#eab308",
       }[a.drive_strategy] || "#ffffff";
 
-      if(a.id == 4){
-        color = '#1703fc'
-      }
     ctx.save();
     ctx.translate(px, py);
     const heading = simType === "traffic" ? -a.heading : a.heading;
