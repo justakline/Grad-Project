@@ -11,6 +11,7 @@ from mesa import Agent
 # from Agent_Based_Traffic_Simulation.core.DriveStrategies import AbstractDriveStrategy
 from . import TrafficModel
 from .Vehicle import Vehicle
+from .VehicleTypes import AbstractVehicle, SUV, Truck,  Motorcycle
 
 if TYPE_CHECKING:
     from .DriveStrategies.AbstractDriveStrategy import AbstractDriveStrategy
@@ -19,12 +20,12 @@ if TYPE_CHECKING:
 class TrafficAgent(Agent):
     model: TrafficModel
 
-    def __init__(self, model: TrafficModel, position: np.ndarray, goal: np.ndarray,
-                 length: float, width: float, lane_intent: int, spawn_time, personality: AbstractPersonality = None, velocity = 0):
+    def __init__(self, model: TrafficModel, goal: np.ndarray, lane_intent: int, spawn_time, vehicle: AbstractVehicle, 
+                 personality: AbstractPersonality = DefensivePersonality(), velocity = 0):
         super().__init__(model)
         dt = model.dt
 
-        self.vehicle: Vehicle = Vehicle(position, length, width)
+        self.vehicle: AbstractVehicle = vehicle
         self.goal: np.ndarray = goal
         self.lane_intent = lane_intent
         self.current_lane = lane_intent
@@ -33,7 +34,7 @@ class TrafficAgent(Agent):
         self.is_removed = False
 
         # --- Personality ---
-        self.personality = personality if personality is not None else DefensivePersonality()
+        self.personality = personality
         self.personality.vehicle = self.vehicle # Give personality access to vehicle properties
 
         self.max_speed = personality.max_speed
@@ -69,7 +70,6 @@ class TrafficAgent(Agent):
         self.initial_lane_x = self.vehicle.position[0]
 
         # small initial push along lane
-        
         if(velocity == 0 ):
             self.vehicle.velocity = self.current_lane_vector() * self.desired_speed/10
         else:

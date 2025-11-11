@@ -5,7 +5,7 @@ from .Highway import Highway
 from .TrafficAgent import TrafficAgent
 from .Personalities import DefensivePersonality, AggressivePersonality
 
-
+from .VehicleTypes import AbstractVehicle, SUV, Truck,  Motorcycle
 
 
 
@@ -115,20 +115,18 @@ class TrafficModel(Model):
     def create_agent(self, lane_idx: int, new_velocity: float=0):
         lane = self.highway.lanes[lane_idx]
 
-        vehicle_aspect_ratio = random.uniform(2.2, 2.7)
-        new_width = random.randint(1700, 2700)
-        new_length = vehicle_aspect_ratio * new_width
         personality = DefensivePersonality()
+        position =  lane.start_position + np.array([0,100])
+        vehicle = SUV(position)
 
+        # small initial push along lane
 
         return TrafficAgent(
                             model=self,
-                            position=lane.start_position + np.array([0,100]),
                             goal=lane.end_position,
-                            length=new_length,
-                            width=new_width,
                             lane_intent=lane_idx,
                             spawn_time=self.total_time,
+                            vehicle=vehicle,
                             personality=personality,
                             velocity=new_velocity
                     )
