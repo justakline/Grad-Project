@@ -1,1 +1,0 @@
-timestamp_ms,agent_id,current_lane,lane_intent,x_mm,y_mm,vx_mm_per_ms,vy_mm_per_ms,ax_mm_per_ms2,ay_mm_per_ms2,desired_speed,max_speed,drive_strategy

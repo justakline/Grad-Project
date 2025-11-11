@@ -27,7 +27,7 @@ class Logger:
                 'timestamp_ms', 'agent_id', 'current_lane', 'lane_intent',
                 'x_mm', 'y_mm', 'vx_mm_per_ms', 'vy_mm_per_ms',
                 'ax_mm_per_ms2', 'ay_mm_per_ms2',
-                'desired_speed', 'max_speed', 'drive_strategy'
+                'desired_speed', 'max_speed', 'drive_strategy', 'vehicle_type'
             ])
         # Create raw collisions file and its columns... do not need many colums because we can cross reference with raw agent file
         with open(self.collsions_file_name, 'w', newline='') as f:
@@ -100,6 +100,7 @@ class Logger:
                     float(acc[0]), float(acc[1]),
                     agent.desired_speed,
                     agent.max_speed,
-                    type(agent.current_drive_strategy).__name__
+                    type(agent.current_drive_strategy).__name__,
+                    type(agent.vehicle).__name__
                 ])
 
