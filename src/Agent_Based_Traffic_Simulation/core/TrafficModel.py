@@ -32,6 +32,7 @@ class TrafficModel(Model):
         self.last_in_lane =[None for _ in range(self.highway.lane_count)]
         
         default_velocity = random.uniform(25, 30) if not populate_highway else 0
+        # default_velocity = random.uniform(25, 30) 
         agent = self.create_agent(0, default_velocity)
 
         self.last_in_lane[0] = agent
@@ -46,7 +47,7 @@ class TrafficModel(Model):
         for i in range(n_agents):
             lane_intent = i % len(self.highway.lanes)
 
-            agent = self.create_agent(lane_intent)
+            agent = self.create_agent(lane_intent, default_velocity)
             # Spawn on lane center X
             start_position = self._find_clear_spawn(
                 lane_idx=lane_intent,
@@ -190,25 +191,70 @@ class TrafficModel(Model):
         # Check every unique pair of agents for a potential collision.
         for i in range(num_agents):
             for j in range(i + 1, num_agents):
-                agent_a = local_agents[i]
-                agent_b = local_agents[j]
-                # Use current positions
-                pos_a = agent_a.vehicle.position
-                pos_b = agent_b.vehicle.position
-
-                # Check for bounding box overlap (AABB collision detection)
-                half_width_a = agent_a.vehicle.width / 2
-                half_length_a = agent_a.vehicle.length / 2
-                half_width_b = agent_b.vehicle.width / 2
-                half_length_b = agent_b.vehicle.length / 2
-
-                if abs(pos_a[0] - pos_b[0]) < (half_width_a + half_width_b) and \
-                   abs(pos_a[1] - pos_b[1]) < (half_length_a + half_length_b):
-                    return True  # A collision is detected between this pair.
-
+                if(self.is_collision(local_agents[i], local_agents[j])):
+                   return True
         return False  # No collisions detected among any pair.
 
+    def is_collision(self, agent_a, agent_b):
+        """
+        Checks if two rectangular vehicles (agent_a, agent_b) collide.
+        Handles rotated rectangles using Separating Axis Theorem (SAT). AI Generateed, I dont understand this
+        """
+        # Get positions (centers)
+        pos_a = np.array(agent_a.vehicle.position, dtype=float)
+        pos_b = np.array(agent_b.vehicle.position, dtype=float)
 
+        # Dimensions
+        half_w_a, half_l_a = agent_a.vehicle.width / 2, agent_a.vehicle.length / 2
+        half_w_b, half_l_b = agent_b.vehicle.width / 2, agent_b.vehicle.length / 2
+
+        # Get orientation vectors (unit)
+        vel_a = agent_a.vehicle.velocity
+        vel_b = agent_b.vehicle.velocity
+
+        def direction_from_velocity(vel, default=np.array([0, 1])):
+            """Return a normalized direction vector; fall back to straight if stopped."""
+            norm = np.linalg.norm(vel)
+            if norm < 1e-6:
+                return default
+            return vel / norm
+
+        forward_a = direction_from_velocity(vel_a)
+        forward_b = direction_from_velocity(vel_b)
+
+        # Perpendicular (right) vectors
+        right_a = np.array([-forward_a[1], forward_a[0]])
+        right_b = np.array([-forward_b[1], forward_b[0]])
+
+        # Construct corners of both rectangles (center ± forward/right)
+        def get_corners(center, fwd, right, half_l, half_w):
+            return np.array([
+                center + fwd * half_l + right * half_w,
+                center + fwd * half_l - right * half_w,
+                center - fwd * half_l - right * half_w,
+                center - fwd * half_l + right * half_w
+            ])
+
+        corners_a = get_corners(pos_a, forward_a, right_a, half_l_a, half_w_a)
+        corners_b = get_corners(pos_b, forward_b, right_b, half_l_b, half_w_b)
+
+        # --- Separating Axis Theorem (SAT) ---
+        # Projection axes are rectangle normals
+        axes = [forward_a, right_a, forward_b, right_b]
+
+        def project(points, axis):
+            """Project corners onto an axis and return min, max."""
+            dots = np.dot(points, axis)
+            return np.min(dots), np.max(dots)
+
+        for axis in axes:
+            min_a, max_a = project(corners_a, axis)
+            min_b, max_b = project(corners_b, axis)
+            # Check for separation
+            if max_a < min_b or max_b < min_a:
+                return False  # Separated along this axis → no collision
+
+        return True  # No separating axis found → collision
 
     def _find_clear_spawn(self, lane_idx: int, vehicle_length_mm: float, tries: int = 50):
         """
@@ -238,3 +284,4 @@ class TrafficModel(Model):
                 return pos
 
         return None  # could not find a clear spot
+        

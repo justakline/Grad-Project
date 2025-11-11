@@ -2,6 +2,8 @@ import csv
 import os
 import datetime
 
+from .TrafficModel import TrafficModel
+
 class Logger:
     def __init__(self, interval_ms: int):
         """
@@ -35,10 +37,14 @@ class Logger:
             ])
 
     def log_all(self, model):
-        self.log_collisions(model)
-        self.log_agents(model)
+        current_time = model.total_time
+        if current_time - self.last_log_time < self.interval_ms:
+            return  # Not time to log yet
+        self.log_collisions(model, current_time)
+        self.log_agents(model, current_time)
+        self.last_log_time = current_time
 
-    def log_collisions(self, model):
+    def log_collisions(self, model:TrafficModel, current_time):
         """
         Log all collisions that happen ie overlap between agents
 
@@ -47,15 +53,24 @@ class Logger:
         model : TrafficModel
             The running model instance.
         """
-        current_time = model.total_time
-        if current_time - self.last_log_time < self.interval_ms:
-            return  # Not time to log yet
-        with open(self.agent_file_name, 'a', newline='') as f:
+        with open(self.collsions_file_name, 'a', newline='') as f:
             writer = csv.writer(f)
+            collisions:set[tuple[int,int]] = set()
+            # Get the neighbors for each agent within their length (length is always bigger than width)
+            # Then check for overlap
             for agent in model.agents:
-                pass
+                neighbors = model.highway.get_neighbors(agent.pos, agent.vehicle.length * 3, include_center=False)
+                if (len(neighbors) == 0):
+                    continue
+                for neighbor in neighbors:
+                    if(model.is_collision(agent, neighbor)):
+                        collisions.add(tuple(sorted((agent.unique_id, neighbor.unique_id))))
 
-    def log_agents(self, model):
+            for collision in collisions:
+                writer.writerow([current_time,collision[0], collision[1]])
+                    
+
+    def log_agents(self, model: TrafficModel, current_time):
         """
         Log the state of all agents if the logging interval has elapsed.
 
@@ -64,9 +79,6 @@ class Logger:
         model : TrafficModel
             The running model instance.  
         """
-        current_time = model.total_time
-        if current_time - self.last_log_time < self.interval_ms:
-            return  # Not time to log yet
         with open(self.agent_file_name, 'a', newline='') as f:
             writer = csv.writer(f)
             for agent in model.agents:
@@ -90,4 +102,4 @@ class Logger:
                     agent.max_speed,
                     type(agent.current_drive_strategy).__name__
                 ])
-        self.last_log_time = current_time
+

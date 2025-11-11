@@ -25,7 +25,8 @@ warnings.filterwarnings("ignore", category=UserWarning)
 simulation_model = None
 simulation_type = None
 dt = 40 #ms
-logger = Logger( dt)
+logging_dt = 240
+logger = Logger( logging_dt )
 
 
 @app.route('/')
@@ -44,7 +45,7 @@ def init_simulation(sim_type):
         highway_lanes = 5
         lane_size = 3657
  
-        n_agents = 50
+        n_agents = 80
 
 
         populate_highway = True
@@ -80,7 +81,7 @@ def step_simulation():
 
     try:
         simulation_model.step()
-        logger.log_agents(simulation_model)
+        logger.log_all(simulation_model)
 
 
         agents_data = []
