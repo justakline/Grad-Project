@@ -140,7 +140,7 @@ class TrafficAgent(Agent):
         
         # If we do not have a person in front of us or we are in the first x ms of spawning
         if self.lead is None or self.gap_to_lead is None or self.spawn_time + self.model.initial_accelerate_time > self.model.total_time:
-            self.assign_strategy(AccelerateStrategy) 
+            self.assign_strategy(CruiseStrategy) 
             return
 
         v_now = np.linalg.norm(self.vehicle.velocity)
@@ -169,20 +169,14 @@ class TrafficAgent(Agent):
         This is more robust than just checking lane indices, as it accounts for agents
         that are in the middle of a lane change.
         """
-        # Get properties of the ego agent's current lane
         lane = self.model.highway.lanes[self.current_lane]
         lane_width = lane.lane_width
         lane_center_x = lane.start_position[0]
 
-        # Calculate the x-boundaries of the lane
-        lane_min_x = lane_center_x - lane_width / 2
-        lane_max_x = lane_center_x + lane_width / 2
+        # Only count as same lane if their center is inside this lane
+        return abs(other_agent.vehicle.position[0] - lane_center_x) < lane_width * 0.80
 
-        # Check if the other agent's bounding box overlaps with the lane's x-range
-        other_agent_min_x = other_agent.vehicle.position[0] - other_agent.vehicle.width / 2
-        other_agent_max_x = other_agent.vehicle.position[0] + other_agent.vehicle.width / 2
-
-        return other_agent_max_x > lane_min_x and other_agent_min_x < lane_max_x
+        # return other_agent_max_x > lane_min_x and other_agent_min_x < lane_max_x
 
     def check_outside_of_bounds(self) -> bool:
       
@@ -222,12 +216,14 @@ class TrafficAgent(Agent):
     def is_uncomfortable_closing_speed(self, closing_speed, velocity):
         if(velocity < 15):
             return closing_speed > 10
-        if(velocity > 25):
+        if(velocity < 25):
             return closing_speed > 13
-        if(velocity > 45):
+        if(velocity < 45):
             return closing_speed > 15
-        if velocity > 65:
+        if velocity < 65:
             return closing_speed > 20
+        return closing_speed > 25
+
     def current_lane_vector(self) -> np.ndarray:
         lane = self.model.highway.lanes[self.lane_intent]
         d = lane.end_position - self.vehicle.position

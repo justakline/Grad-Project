@@ -15,7 +15,7 @@ class TrafficModel(Model):
     Agents spawn on lane CENTERS coming from Highway.lanes[*].start_position[0].
     """
 
-    def __init__(self, n_agents: int, seed: int, dt: int, highway: Highway,  populate_highway = False, is_generate_agents:bool = False, agent_rate:int = 0):
+    def __init__(self, n_agents: int, seed: int, dt: int, highway: Highway, is_generate_agents:bool = False, agent_rate:float = 0.0, aggressive_pct:float = 30.0):
         super().__init__(seed=seed)
         self.highway = highway
         self.steps = 0
@@ -28,10 +28,10 @@ class TrafficModel(Model):
         # Congestion management
         self.is_in_cooldown = False
         self.cooldown_timer = 0.0
-        self.initial_accelerate_time = 500 #seconds
+        self.initial_accelerate_time = 500 #ms
         self.last_in_lane =[None for _ in range(self.highway.lane_count)]
         
-        default_velocity = random.uniform(25, 30) if not populate_highway else 0
+        default_velocity = random.uniform(25, 30) 
         # default_velocity = random.uniform(25, 30) 
         agent = self.create_agent(0, default_velocity)
 
@@ -41,13 +41,13 @@ class TrafficModel(Model):
         self.top_agent = agent
         self.last_agent = agent
 
-        if(not populate_highway):
+        if(n_agents == 0):
             return
 
         for i in range(n_agents):
             lane_intent = i % len(self.highway.lanes)
 
-            agent = self.create_agent(lane_intent, default_velocity)
+            agent = self.create_agent(lane_intent, default_velocity, aggressive_pct)
             # Spawn on lane center X
             start_position = self._find_clear_spawn(
                 lane_idx=lane_intent,
@@ -56,6 +56,7 @@ class TrafficModel(Model):
             )
             if start_position is None:
                 # There are no more open spots so we can not add any more into the sim
+                print("removed")
                 agent.remove_self()
                 break
 
@@ -112,12 +113,12 @@ class TrafficModel(Model):
             if self.last_in_lane[agent.current_lane] == agent:
                 self.last_in_lane[agent.current_lane] = None
 
-    def create_agent(self, lane_idx: int, new_velocity: float=0):
+    def create_agent(self, lane_idx: int, new_velocity: float=0, aggressive_pct:float = 30.0):
         lane = self.highway.lanes[lane_idx]
 
-        personality = DefensivePersonality()
         position =  lane.start_position + np.array([0,100])
         vehicle = SUV(position)
+        personality = AggressivePersonality() if random.randint(0,100) < aggressive_pct else DefensivePersonality()
 
         # small initial push along lane
 
@@ -129,14 +130,16 @@ class TrafficModel(Model):
                             vehicle=vehicle,
                             personality=personality,
                             velocity=new_velocity
+                            
                     )
    
     def is_too_dangerous_to_spawn(self, last_agent_in_lane: TrafficAgent) -> bool:
         # There is no car in the lane so all good
+        min_clear_lengths = 4
         if not last_agent_in_lane:
             return False
         # If last car is too close to the start, this lane is blocked.
-        if last_agent_in_lane.vehicle.position[1] <= last_agent_in_lane.vehicle.length * 1.75:
+        if last_agent_in_lane.vehicle.position[1] <= last_agent_in_lane.vehicle.length * min_clear_lengths:
             return True 
         # If last car is moving too slowly, this lane is blocked.
         if np.linalg.norm(last_agent_in_lane.vehicle.velocity) <= last_agent_in_lane.max_speed * 0.3:

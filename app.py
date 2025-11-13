@@ -51,17 +51,15 @@ def init_simulation(sim_type):
         is_logging = bool(request.args.get('is_logging_agents', False))
         logging_dt = int(request.args.get('logging_dt', 40))
 
-        aggressive_pct = int(request.args.get('aggressive_pct', 30))
-        agent_rate = int(request.args.get('agent_rate', 5))
+        aggressive_pct = float(request.args.get('aggressive_pct', 30))
+        agent_rate = float(request.args.get('agent_rate', 0.5))
 
-        populate_highway = True
         generate_agents = True
-        goal_agent_rate = 14 # per second
 
         highway_width = highway_lanes * lane_size * 1.01 # 1.01 due to index out of bounds exceptions
         # Highway units are millimeters
         highway = Highway(highway_width, highway_length, highway_lanes, lane_size)
-        simulation_model = TrafficModel(n_agents,1, dt, highway,populate_highway, generate_agents, goal_agent_rate)
+        simulation_model = TrafficModel(n_agents,1, dt, highway, generate_agents, agent_rate, aggressive_pct)
         simulation_type = 'traffic'
 
         return jsonify({
