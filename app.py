@@ -25,8 +25,8 @@ warnings.filterwarnings("ignore", category=UserWarning)
 simulation_model = None
 simulation_type = None
 dt = 40 #ms
-logging_dt = 240
-logger = Logger( logging_dt )
+
+logger = None
 
 
 @app.route('/')
@@ -35,7 +35,7 @@ def index():
 
 @app.route('/api/init/<sim_type>')
 def init_simulation(sim_type):
-    global simulation_model, simulation_type
+    global simulation_model, simulation_type, logger, logging_dt
     try:
     
         from src.Agent_Based_Traffic_Simulation.core.TrafficModel import TrafficModel
@@ -48,8 +48,10 @@ def init_simulation(sim_type):
         lane_size = int(request.args.get('size_of_lanes', 3657))
         n_agents = int(request.args.get('n_agents', 0))
 
-        is_logging = bool(request.args.get('is_logging_agents', False))
+        is_logging = (request.args.get('is_logging_agents', 'false').lower()) == 'true'
+        print(f"is_logging: {is_logging}")
         logging_dt = int(request.args.get('logging_dt', 40))
+        logger = Logger( logging_dt, is_logging )
 
         aggressive_pct = float(request.args.get('aggressive_pct', 30))
         agent_rate = float(request.args.get('agent_rate', 0.5))
@@ -57,7 +59,7 @@ def init_simulation(sim_type):
         generate_agents = True
 
         highway_width = highway_lanes * lane_size * 1.01 # 1.01 due to index out of bounds exceptions
-        # Highway units are millimeters
+ 
         highway = Highway(highway_width, highway_length, highway_lanes, lane_size)
         simulation_model = TrafficModel(n_agents,1, dt, highway, generate_agents, agent_rate, aggressive_pct)
         simulation_type = 'traffic'
@@ -85,6 +87,7 @@ def step_simulation():
 
     try:
         simulation_model.step()
+
         logger.log_all(simulation_model)
 
 

@@ -5,7 +5,7 @@ import datetime
 from .TrafficModel import TrafficModel
 
 class Logger:
-    def __init__(self, interval_ms: int):
+    def __init__(self, interval_ms: int, is_logging: bool = True):
         """
         Parameters
         ----------
@@ -19,24 +19,20 @@ class Logger:
         self.collsions_file_name = f"logs/collisions_log_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
         self.interval_ms = interval_ms
         self.last_log_time = 0
+        self.is_logging = is_logging
+        self.is_files_created = False
 
-        # Create raw agent file and its columns
-        with open(self.agent_file_name, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                'timestamp_ms', 'agent_id', 'current_lane', 'lane_intent',
-                'x_mm', 'y_mm', 'vx_mm_per_ms', 'vy_mm_per_ms',
-                'ax_mm_per_ms2', 'ay_mm_per_ms2',
-                'desired_speed', 'max_speed', 'drive_strategy', 'vehicle_type'
-            ])
-        # Create raw collisions file and its columns... do not need many colums because we can cross reference with raw agent file
-        with open(self.collsions_file_name, 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow([
-                'timestamp_ms', 'agent1_id', 'agent2_id'
-            ])
+        
 
     def log_all(self, model):
+
+        if(not self.is_logging):
+            return
+        
+        if(not self.is_files_created):
+            self.create_files()
+            self.is_files_created = True
+
         current_time = model.total_time
         if current_time - self.last_log_time < self.interval_ms:
             return  # Not time to log yet
@@ -104,3 +100,19 @@ class Logger:
                     type(agent.vehicle).__name__
                 ])
 
+    def create_files(self):
+        # Create raw agent file and its columns
+        with open(self.agent_file_name, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                'timestamp_ms', 'agent_id', 'current_lane', 'lane_intent',
+                'x_mm', 'y_mm', 'vx_mm_per_ms', 'vy_mm_per_ms',
+                'ax_mm_per_ms2', 'ay_mm_per_ms2',
+                'desired_speed', 'max_speed', 'drive_strategy', 'vehicle_type'
+            ])
+        # Create raw collisions file and its columns... do not need many colums because we can cross reference with raw agent file
+        with open(self.collsions_file_name, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow([
+                'timestamp_ms', 'agent1_id', 'agent2_id'
+            ])

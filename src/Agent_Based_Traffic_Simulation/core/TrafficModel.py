@@ -24,6 +24,7 @@ class TrafficModel(Model):
         self.last_generated_agent_time = 0
         self.is_generate_agents = is_generate_agents
         self.agent_rate = agent_rate # -> Agents per second
+        self.aggressive_percent = aggressive_pct
 
         # Congestion management
         self.is_in_cooldown = False
@@ -47,7 +48,7 @@ class TrafficModel(Model):
         for i in range(n_agents):
             lane_intent = i % len(self.highway.lanes)
 
-            agent = self.create_agent(lane_intent, default_velocity, aggressive_pct)
+            agent = self.create_agent(lane_intent, default_velocity)
             # Spawn on lane center X
             start_position = self._find_clear_spawn(
                 lane_idx=lane_intent,
@@ -113,12 +114,13 @@ class TrafficModel(Model):
             if self.last_in_lane[agent.current_lane] == agent:
                 self.last_in_lane[agent.current_lane] = None
 
-    def create_agent(self, lane_idx: int, new_velocity: float=0, aggressive_pct:float = 30.0):
+    def create_agent(self, lane_idx: int, new_velocity: float=0):
+
         lane = self.highway.lanes[lane_idx]
 
         position =  lane.start_position + np.array([0,100])
         vehicle = SUV(position)
-        personality = AggressivePersonality() if random.randint(0,100) < aggressive_pct else DefensivePersonality()
+        personality = AggressivePersonality() if random.randint(0,100) < self.aggressive_percent else DefensivePersonality()
 
         # small initial push along lane
 
