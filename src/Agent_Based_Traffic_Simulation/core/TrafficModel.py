@@ -159,21 +159,44 @@ class TrafficModel(Model):
                             
                     )
    
+    # def is_too_dangerous_to_spawn(self, last_agent_in_lane: TrafficAgent) -> bool:
+    #     # There is no car in the lane so all good
+    #     min_clear_lengths = 4
+    #     if not last_agent_in_lane:
+    #         return False
+    #     # If last car is too close to the start, this lane is blocked.
+    #     if last_agent_in_lane.vehicle.position[1] <= last_agent_in_lane.vehicle.length * min_clear_lengths:
+    #         return True 
+    #     # If last car is moving too slowly, this lane is blocked.
+    #     if np.linalg.norm(last_agent_in_lane.vehicle.velocity) <= last_agent_in_lane.desired_speed * 0.3:
+    #         return True  # Try next lane
+    #     if(self.is_collision_ahead(last_agent_in_lane)):
+    #         return True 
+    #     return False
     def is_too_dangerous_to_spawn(self, last_agent_in_lane: TrafficAgent) -> bool:
-        # There is no car in the lane so all good
-        min_clear_lengths = 4
+        """
+        Light gate: we only block if the last agent is extremely close to the start
+        OR almost stopped and very close, which would cause immediate overlap.
+        Otherwise we allow spawning downstream via _find_clear_spawn_scan.
+        """
         if not last_agent_in_lane:
             return False
-        # If last car is too close to the start, this lane is blocked.
-        if last_agent_in_lane.vehicle.position[1] <= last_agent_in_lane.vehicle.length * min_clear_lengths:
-            return True 
-        # If last car is moving too slowly, this lane is blocked.
-        if np.linalg.norm(last_agent_in_lane.vehicle.velocity) <= last_agent_in_lane.desired_speed * 0.3:
-            return True  # Try next lane
-        if(self.is_collision_ahead(last_agent_in_lane)):
-            return True 
+
+        min_clear_lengths = 2.0   # reduced from 4 to improve throughput
+        near_start_limit = last_agent_in_lane.vehicle.length * min_clear_lengths
+        if last_agent_in_lane.vehicle.position[1] <= near_start_limit:
+            # too close to the entrance; try downstream instead
+            return True
+
+        # consider velocity relative to desired_speed if available
+        v = float(np.linalg.norm(last_agent_in_lane.vehicle.velocity))
+        desired = getattr(last_agent_in_lane, "desired_speed", 30.0)  # mm/ms fallback
+        # if crawling and still very near the start, block
+        if v <= desired * 0.15 and last_agent_in_lane.vehicle.position[1] <= near_start_limit * 1.2:
+            return True
+
         return False
-    
+
 
 
     def try_to_spawn_agent(self, available_lanes:list[int]):

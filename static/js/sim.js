@@ -89,8 +89,10 @@ let isPanning = false,
 
 let lastAgents = [];
 
-// NEW: gate drawing until initialized
 let simReady = false;
+
+let stepAbortController = null; // abort in-flight /api/step
+let runId = 0; // drops late responses from older runs
 
 // UI helpers
 function setStatus(msg, active = false) {
@@ -443,6 +445,7 @@ async function initSimulation(type) {
 let pollingMs = 50;
 function startSimulation() {
   if (isRunning) return;
+  runId += 1; // new run; older responses become stale
   isRunning = true;
   startBtn.disabled = true;
   stopBtn.disabled = false;
@@ -452,15 +455,21 @@ function startSimulation() {
 }
 function stopSimulation() {
   if (!isRunning) return;
-  isRunning = false;
-  startBtn.disabled = false;
-  stopBtn.disabled = true;
-  initBtn.disabled = true;
   setStatus("Simulation paused");
   if (intervalId) {
     clearInterval(intervalId);
     intervalId = null;
   }
+
+  // abort any in-flight fetch so it stops now
+  if (stepAbortController) {
+    stepAbortController.abort();
+    stepAbortController = null;
+  }
+  isRunning = false;
+  startBtn.disabled = false;
+  stopBtn.disabled = true;
+  initBtn.disabled = true;
 }
 async function resetSimulation() {
   stopSimulation();
@@ -485,15 +494,27 @@ async function resetSimulation() {
   }
 }
 async function stepSimulation() {
+  if (!isRunning) return;
+
+  // abort any previous in-flight step, then start a fresh one
+  if (stepAbortController) {
+    stepAbortController.abort();
+  }
+  const controller = new AbortController();
+  stepAbortController = controller;
+
+  // capture current run; if Start/Stop cycles, late responses are ignored
+  const myRunId = runId;
   try {
-    const res = await fetch("/api/step");
+    const res = await fetch("/api/step", { signal: controller.signal });
+    // if we stopped or restarted meanwhile, drop this response
+    if (!isRunning || myRunId !== runId) return;
     const data = await res.json();
     if (data.status === "success") {
       lastAgents = data.agents;
       redraw();
       stepCountSpan.textContent = data.step;
       agentCountSpan.textContent = data.agents.length;
-      console.log(data);
       var aggData = "";
       for (const d of data.aggregateData) {
         for (const key of Object.keys(d)) {
@@ -506,8 +527,14 @@ async function stepSimulation() {
       stopSimulation();
     }
   } catch (err) {
+    if (err && err.name === "AbortError") return;
     setStatus(`Error: ${err.message}`);
     stopSimulation();
+  } finally {
+    // clear controller if it is ours
+    if (stepAbortController === controller) {
+      stepAbortController = null;
+    }
   }
 }
 

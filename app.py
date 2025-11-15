@@ -106,7 +106,7 @@ def step_simulation():
         agents_data = []
         aggregate_data = []
         avg_speed = 0
-        for agent in copy.deepcopy(list(simulation_model.agents)):
+        for agent in list(simulation_model.agents):
           
             # Real-world values straight from the model (mm, mm/ms)
             x = float(agent.vehicle.position[0])
