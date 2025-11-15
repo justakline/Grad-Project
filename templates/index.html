@@ -31,17 +31,100 @@
                   max="200"
                 />
 
-                <label for="driverMix">Aggressive Drivers (%):</label>
-                <input
-                  type="range"
-                  id="driverMix"
-                  min="0"
-                  max="100"
-                  value="30"
-                />
-                <span id="driverMixValue">30%</span>
+                <!-- Vehicle Mix Ratios: one line left to right, summary underneath -->
+                <div class="split-group">
+                  <h4>Driver Behavior Mix:</h4>
+                  <hr />
+                  <div class="behavior-grid">
+                    <div class="behavior-col">
+                      <div class="behavior-label">Aggressive (%)</div>
+                      <input
+                        type="number"
+                        id="aggressiveInput"
+                        value="30"
+                        min="0"
+                        max="100"
+                        class="behavior-input"
+                      />
+                    </div>
 
-                <label for="agentRate">Goal Spawn Rate (agents/sec):</label>
+                    <div class="behavior-col">
+                      <div class="behavior-label">Defensive (%)</div>
+                      <input
+                        type="number"
+                        id="defensiveInput"
+                        value="70"
+                        min="0"
+                        max="100"
+                        class="behavior-input"
+                      />
+                    </div>
+                  </div>
+
+                  <input
+                    type="range"
+                    id="driverMix"
+                    min="0"
+                    max="100"
+                    value="30"
+                    class="behavior-slider"
+                  />
+
+                  <div id="driverMixValue" class="behavior-summary">
+                    30% Aggressive / 70% Defensive
+                  </div>
+                  <h4>Vehicle Mix Ratios:</h4>
+                  <hr />
+                  <div class="vehicle-ratios-row">
+                    <label for="truckRatio" class="vehicle-ratio-item">
+                      <span class="vehicle-ratio-label">Truck</span>
+                      <input
+                        type="number"
+                        id="truckRatio"
+                        class="vehicle-ratio-input"
+                        value="4"
+                        min="0"
+                        step="1"
+                      />
+                    </label>
+
+                    <label for="suvRatio" class="vehicle-ratio-item">
+                      <span class="vehicle-ratio-label">SUV</span>
+                      <input
+                        type="number"
+                        id="suvRatio"
+                        class="vehicle-ratio-input"
+                        value="2"
+                        min="0"
+                        step="1"
+                      />
+                    </label>
+
+                    <label for="motorcycleRatio" class="vehicle-ratio-item">
+                      <span class="vehicle-ratio-label">Motorcycle</span>
+                      <input
+                        type="number"
+                        id="motorcycleRatio"
+                        class="vehicle-ratio-input"
+                        value="1"
+                        min="0"
+                        step="1"
+                      />
+                    </label>
+                  </div>
+
+                  <div id="vehicleRatioSummary" class="vehicle-ratio-summary">
+                    <div id="vehicleRatioRaw">
+                      Truck 4 : SUV 2 : Motorcycle 1
+                    </div>
+                    <div id="vehicleRatioPercent">(57% / 29% / 14%)</div>
+                  </div>
+                </div>
+                <h4>Agent Generation Settings:</h4>
+                <hr />
+                <label for="agentRate" style="margin-top: 14px"
+                  >Goal Spawn Rate (agents/sec):</label
+                >
                 <input
                   type="number"
                   id="agentRate"
@@ -52,7 +135,8 @@
 
                 <label for="numAgents">Initial Agents:</label>
                 <input type="number" id="numAgents" value="0" min="0" />
-
+                <h4>Highway Settings:</h4>
+                <hr />
                 <label for="highwayLength">Highway Length (m):</label>
                 <input
                   type="number"
@@ -80,7 +164,8 @@
                   max="7.0"
                   step="0.01"
                 />
-
+                <h4>Logging Settings:</h4>
+                <hr />
                 <label for="isLogging">Logging agent values? </label>
                 <input type="checkbox" id="isLogging" unchecked />
 
@@ -213,7 +298,6 @@
         </ul>
       </div>
     </div>
-
     <script src="{{ url_for('static', filename='js/sim.js') }}"></script>
   </body>
 </html>

@@ -7,7 +7,7 @@ const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const stepCountSpan = document.getElementById("stepCount");
 const agentCountSpan = document.getElementById("agentCount");
-const aggregateData = document.getElementById("aggregateData")
+const aggregateData = document.getElementById("aggregateData");
 const viewport = document.getElementById("viewport");
 const vwInput = document.getElementById("vwInput");
 const vhInput = document.getElementById("vhInput");
@@ -19,12 +19,23 @@ const zoomOutBtn = document.getElementById("zoomOutBtn");
 const zoomLabel = document.getElementById("zoomLabel");
 const resetViewBtn = document.getElementById("resetViewBtn");
 
-
 const toggleSettingsBtn = document.getElementById("toggleSettingsBtn");
 const settingsPanel = document.getElementById("settingsPanel");
 const driverMix = document.getElementById("driverMix");
 const driverMixValue = document.getElementById("driverMixValue");
 const applySettingsBtn = document.getElementById("applySettingsBtn");
+
+// Driver behavior inputs
+const aggressiveInput = document.getElementById("aggressiveInput");
+const defensiveInput = document.getElementById("defensiveInput");
+
+// Vehicle mix inputs and sliders
+// Vehicle ratio inputs (independent)
+const truckRatio = document.getElementById("truckRatio");
+const suvRatio = document.getElementById("suvRatio");
+const motorcycleRatio = document.getElementById("motorcycleRatio");
+const vehicleRatioRaw = document.getElementById("vehicleRatioRaw");
+const vehicleRatioPercent = document.getElementById("vehicleRatioPercent");
 
 // State
 const driveStrategyColorMap = {
@@ -43,6 +54,11 @@ let settings = {
   laneSize: 0,
   isLogging: true,
   logDt: 0,
+  aggressivePct: 0,
+  defensivePct: 0,
+  truckRatio: 0,
+  suv_ratio: 0,
+  motorcycle_ratio: 0,
 };
 
 let isRunning = false,
@@ -81,7 +97,6 @@ function setStatus(msg, active = false) {
   statusDiv.textContent = msg;
   statusDiv.className = active ? "status active" : "status";
 }
-
 
 // Resize + HiDPI
 const ro = new ResizeObserver(() => layoutPreserveCenter());
@@ -213,30 +228,164 @@ document.addEventListener("click", (e) => {
   }
 });
 
-// Keep your existing slider label update
-driverMix.addEventListener("input", (e) => {
-  driverMixValue.textContent = e.target.value + "%";
-});
+// ============ UI BINDING FIX ============
 
-// On Apply - read values and close
-applySettingsBtn.addEventListener("click", () => {
-  setSettings()
+function pctInt(v) {
+  v = Number(v);
+  if (!Number.isFinite(v)) v = 0;
+  if (v < 0) v = 0;
+  if (v > 100) v = 100;
+  return Math.round(v);
+}
 
-  // close the card
-  settingsPanel.classList.remove("active");
-  
-});
+/* ---------------- Driver Behavior: Aggressive vs Defensive = 100 ---------------- */
+function setAggressivePercent(aggr) {
+  aggr = pctInt(aggr);
+  const def = 100 - aggr;
 
-function setSettings(){
-    settings.dt = parseInt(document.getElementById("dtInput").value);
-  settings.aggressivePct = parseInt(driverMix.value);
-  settings.agentRate = parseInt(document.getElementById("agentRate").value);
-  settings.nAgents = parseInt(document.getElementById("numAgents").value);
-  settings.highwayLength = parseInt(document.getElementById("highwayLength").value) * 1000; // Conversion to mm
-  settings.laneNumber = parseInt(document.getElementById("laneNumber").value);
-  settings.laneSize = parseInt(document.getElementById("laneSize").value)* 1000; // Conversion to mm
+  if (aggressiveInput) aggressiveInput.value = aggr;
+  if (defensiveInput) defensiveInput.value = def;
+  if (driverMix) driverMix.value = aggr;
+  if (driverMixValue)
+    driverMixValue.textContent = `${aggr}% Aggressive / ${def}% Defensive`;
+}
+
+function bindDriverBehavior() {
+  // If nothing exists, skip silently
+  if (!driverMix && !aggressiveInput) return;
+
+  // Remove any prior listeners by setting new ones once
+  if (driverMix && !driverMix._bound) {
+    driverMix.addEventListener("input", (e) =>
+      setAggressivePercent(e.target.value)
+    );
+    driverMix._bound = true;
+  }
+  if (aggressiveInput && !aggressiveInput._bound) {
+    aggressiveInput.addEventListener("input", (e) =>
+      setAggressivePercent(e.target.value)
+    );
+    aggressiveInput._bound = true;
+  }
+  if (defensiveInput && !defensiveInput._bound) {
+    defensiveInput.addEventListener("input", (e) => {
+      const def = Math.max(
+        0,
+        Math.min(100, parseInt(e.target.value || "0", 10))
+      );
+      setAggressivePercent(100 - def);
+    });
+    defensiveInput._bound = true;
+  }
+  // Initialize display
+  const init = aggressiveInput?.value ?? driverMix?.value ?? 30;
+  setAggressivePercent(init);
+}
+/* ---------------- Vehicle Mix Ratios (independent) ---------------- */
+function nonNeg(n) {
+  const v = parseFloat(n, 10);
+  return Number.isFinite(v) && v >= 0 ? v : 0;
+}
+
+function updateVehicleRatioSummary() {
+  if (
+    !vehicleRatioRaw ||
+    !vehicleRatioPercent ||
+    !truckRatio ||
+    !suvRatio ||
+    !motorcycleRatio
+  )
+    return;
+  const t = nonNeg(truckRatio.value);
+  const s = nonNeg(suvRatio.value);
+  const m = nonNeg(motorcycleRatio.value);
+  const total = t + s + m;
+
+  let pt = 0,
+    ps = 0,
+    pm = 0;
+  if (total > 0) {
+    pt = Math.round((t / total) * 100);
+    ps = Math.round((s / total) * 100);
+    pm = 100 - pt - ps; // exact sum
+  } // else leaves 0/0/0
+
+  vehicleRatioRaw.textContent = `Truck ${t} : SUV ${s} : Motorcycle ${m} `;
+
+  vehicleRatioPercent.textContent = `(${pt}% / ${ps}% / ${pm}%)`;
+}
+
+function bindVehicleRatios() {
+  if (truckRatio && !truckRatio._bound) {
+    truckRatio.addEventListener("input", updateVehicleRatioSummary);
+    truckRatio._bound = true;
+  }
+  if (suvRatio && !suvRatio._bound) {
+    suvRatio.addEventListener("input", updateVehicleRatioSummary);
+    suvRatio._bound = true;
+  }
+  if (motorcycleRatio && !motorcycleRatio._bound) {
+    motorcycleRatio.addEventListener("input", updateVehicleRatioSummary);
+    motorcycleRatio._bound = true;
+  }
+
+  // Initialize
+  updateVehicleRatioSummary();
+}
+
+/* ---------------- Init bindings ---------------- */
+function wireSlidersAndInputs() {
+  bindDriverBehavior();
+  bindVehicleRatios();
+}
+
+// Bind once DOM is ready
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", wireSlidersAndInputs);
+} else {
+  wireSlidersAndInputs();
+}
+// Also bind when settings panel is toggled open
+if (toggleSettingsBtn) {
+  toggleSettingsBtn.addEventListener("click", () => {
+    setTimeout(wireSlidersAndInputs, 0);
+  });
+}
+
+// ========== END UI BINDING FIX ==========
+
+function setSettings() {
+  settings.dt = parseInt(document.getElementById("dtInput").value, 10);
+
+  // Read aggressive percentage from the linked control
+  if (aggressiveInput) {
+    settings.aggressivePct = parseInt(aggressiveInput.value, 10);
+  }
+
+  // Store raw ratios so backend can decide how to sample
+  if (truckRatio && suvRatio && motorcycleRatio) {
+    settings.suv_ratio = nonNeg(suvRatio.value);
+    settings.truckRatio = nonNeg(truckRatio.value);
+    settings.motorcycle_ratio = nonNeg(motorcycleRatio.value);
+    // settings.vehicleRatios = {
+    //   truck: nonNeg(truckRatio.value),
+    //   suv: nonNeg(suvRatio.value),
+    //   motorcycle: nonNeg(motorcycleRatio.value),
+    // };
+  }
+
+  settings.agentRate = parseInt(document.getElementById("agentRate").value, 10);
+  settings.nAgents = parseInt(document.getElementById("numAgents").value, 10);
+  settings.highwayLength =
+    parseInt(document.getElementById("highwayLength").value, 10) * 1000; // Conversion to mm
+  settings.laneNumber = parseInt(
+    document.getElementById("laneNumber").value,
+    10
+  );
+  settings.laneSize =
+    parseFloat(document.getElementById("laneSize").value) * 1000; // Conversion to mm
   settings.isLogging = document.getElementById("isLogging").checked;
-  settings.logDt = parseInt(document.getElementById("logDt").value);
+  settings.logDt = parseInt(document.getElementById("logDt").value, 10);
 
   // close the card
   settingsPanel.classList.remove("active");
@@ -244,27 +393,29 @@ function setSettings(){
 
 // Backend
 async function initSimulation(type) {
-  if(isRunning){
-    return
+  if (isRunning) {
+    return;
   }
   try {
-    // const res = await fetch(`/api/init/${type}`);
-    setSettings()
+    setSettings();
     const params = new URLSearchParams({
       dt: settings.dt,
       aggressive_pct: settings.aggressivePct,
       agent_rate: settings.agentRate,
       n_agents: settings.nAgents,
-      highway_length : settings.highwayLength,
+      highway_length: settings.highwayLength,
       number_of_lanes: settings.laneNumber,
       size_of_lanes: settings.laneSize,
       is_logging_agents: settings.isLogging,
-      logging_dt: settings.logDt
-
+      logging_dt: settings.logDt,
+      aggressive_pct: settings.aggressivePct,
+      defensive_pct: settings.defensivePct,
+      truck_ratio: settings.truckRatio,
+      suv_ratio: settings.suv_ratio,
+      motorcycle_ratio: settings.motorcycle_ratio,
     });
     const res = await fetch(`/api/init/${type}?${params.toString()}`);
     const data = await res.json();
-
 
     if (data.status === "success") {
       simType = type;
@@ -275,7 +426,7 @@ async function initSimulation(type) {
       laneCenters = Array.isArray(data.lane_centers)
         ? data.lane_centers.slice().sort((a, b) => a - b)
         : [];
-      simReady = true; // <— now we can draw
+      simReady = true;
       resetView();
       setStatus(`${data.message}. Click Start to begin.`, true);
       startBtn.disabled = false;
@@ -319,14 +470,14 @@ async function resetSimulation() {
     if (data.status === "success") {
       simType = null;
       lastAgents = [];
-      simReady = false; // <— back to blank
+      simReady = false;
       startBtn.disabled = true;
       stopBtn.disabled = true;
       initBtn.disabled = false;
       stepCountSpan.textContent = "0";
       agentCountSpan.textContent = "0";
-      aggregateData.textContent = "0"
-      clearCanvas(); // <— ensure blank immediately
+      aggregateData.textContent = "0";
+      clearCanvas();
       setStatus("Simulation reset. Initialize a new simulation.");
     }
   } catch (err) {
@@ -342,21 +493,17 @@ async function stepSimulation() {
       redraw();
       stepCountSpan.textContent = data.step;
       agentCountSpan.textContent = data.agents.length;
-      console.log(data)
-      var aggData = ""
-      for (const d of data.aggregateData){
-        for (const key of Object.keys(d)){
-
-          aggData += "| "+ key + ": " + d[key] + " " 
-          // console.log(key)
+      console.log(data);
+      var aggData = "";
+      for (const d of data.aggregateData) {
+        for (const key of Object.keys(d)) {
+          aggData += "| " + key + ": " + d[key] + " ";
         }
       }
-      aggregateData.textContent = aggData
-    }else{
+      aggregateData.textContent = aggData;
+    } else {
       setStatus(`Error: ${data.message}`);
-
       stopSimulation();
-
     }
   } catch (err) {
     setStatus(`Error: ${err.message}`);
@@ -372,14 +519,14 @@ function clearCanvas() {
   ctx.restore();
   const dpr = window.devicePixelRatio || 1;
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  ctx.fillStyle = "#000"; // blank black background
+  ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, canvas.width / dpr, canvas.height / dpr);
 }
 
 // Highway rect (SCREEN px)
 function getHighwayRect() {
-  const pTL = worldToScreen(0, maxY); // top-left
-  const pBR = worldToScreen(maxX, 0); // bottom-right
+  const pTL = worldToScreen(0, maxY);
+  const pBR = worldToScreen(maxX, 0);
   const x0 = Math.floor(Math.min(pTL[0], pBR[0]));
   const y0 = Math.floor(Math.min(pTL[1], pBR[1]));
   const x1 = Math.ceil(Math.max(pTL[0], pBR[0]));
@@ -389,7 +536,7 @@ function getHighwayRect() {
 
 // Highway (lanes + shoulders)
 function drawHighway() {
-  if (!simReady) return; // <— do not draw before init
+  if (!simReady) return;
   const R = getHighwayRect();
 
   // Base asphalt
@@ -426,7 +573,7 @@ function drawHighway() {
 
   // Map to SCREEN; pin ends to rect; round internals to px
   let edgesX = edgesWorld.map((x) => worldToScreen(x, 0)[0]);
-  const R2 = getHighwayRect(); // recompute after transforms (safe)
+  const R2 = getHighwayRect();
   edgesX[0] = R2.x0;
   edgesX[edgesX.length - 1] = R2.x1;
   for (let i = 1; i < edgesX.length - 1; i++) edgesX[i] = Math.round(edgesX[i]);
@@ -501,7 +648,7 @@ function drawAgents() {
     ctx.strokeStyle = "#111";
     ctx.lineWidth = 1;
     ctx.beginPath();
-    
+
     ctx.rect(-halfL, -halfW, 2 * halfL, 2 * halfW);
     ctx.fill();
     ctx.stroke();
@@ -515,7 +662,7 @@ function drawAgents() {
 
 // Paint black outside the highway instead of clipping
 function maskOutsideHighway() {
-  if (!simReady) return; // blank means no masking either
+  if (!simReady) return;
   const R = getHighwayRect();
   const W = canvas.width / (window.devicePixelRatio || 1);
   const H = canvas.height / (window.devicePixelRatio || 1);
@@ -529,7 +676,7 @@ function maskOutsideHighway() {
 // Main redraw
 function redraw() {
   clearCanvas();
-  if (!simReady) return; // keep it blank until init succeeds
+  if (!simReady) return;
   drawHighway();
   drawAgents();
   maskOutsideHighway();

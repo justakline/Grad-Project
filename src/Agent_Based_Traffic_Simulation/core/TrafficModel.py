@@ -15,7 +15,7 @@ class TrafficModel(Model):
     Agents spawn on lane CENTERS coming from Highway.lanes[*].start_position[0].
     """
 
-    def __init__(self, n_agents: int, seed: int, dt: int, highway: Highway, is_generate_agents:bool = False, agent_rate:float = 0.0, aggressive_pct:float = 30.0):
+    def __init__(self, n_agents: int, seed: int, dt: int, highway: Highway, is_generate_agents:bool = False, agent_rate:float = 0.0, percents_and_ratios:dict = None):
         super().__init__(seed=seed)
         self.highway = highway
         self.steps = 0
@@ -24,7 +24,9 @@ class TrafficModel(Model):
         self.last_generated_agent_time = 0
         self.is_generate_agents = is_generate_agents
         self.agent_rate = agent_rate # -> Agents per second
-        self.aggressive_percent = aggressive_pct
+        # self.aggressive_percent = aggressive_pct
+        self.percents_and_ratios = percents_and_ratios
+
 
         # Congestion management
         self.is_in_cooldown = False
@@ -113,14 +115,36 @@ class TrafficModel(Model):
             # Update last_in_lane if the removed agent was the last one
             if self.last_in_lane[agent.current_lane] == agent:
                 self.last_in_lane[agent.current_lane] = None
+                
+    def choose_personality(self):
+        if random.randint(0,100) < self.percents_and_ratios['aggressive_percent']  :
+            return AggressivePersonality()
+        return DefensivePersonality()
+
+    def choose_vehicle_type(self, position):
+        # Since truck + motorcycle + suv = 100, then i could say anything between 0 - truck is truck, anything between truck and truck + motorcylce = motorcycle
+        total = float(self.percents_and_ratios['truck_ratio'] + self.percents_and_ratios['motorcycle_ratio'] + self.percents_and_ratios['suv_ratio'])
+        truck_percent = self.percents_and_ratios['truck_ratio']/total
+        motorcycle_percent = self.percents_and_ratios['motorcycle_ratio']/total
+
+        random_number = random.random()
+        if random_number < truck_percent :
+            return Truck(position)
+        if random_number < truck_percent + motorcycle_percent  :
+            return Motorcycle(position)
+        return SUV(position)
+
 
     def create_agent(self, lane_idx: int, new_velocity: float=0):
 
         lane = self.highway.lanes[lane_idx]
 
         position =  lane.start_position + np.array([0,100])
-        vehicle = SUV(position)
-        personality = AggressivePersonality() if random.randint(0,100) < self.aggressive_percent else DefensivePersonality()
+        # vehicle = SUV(position)
+        # personality = AggressivePersonality() if random.randint(0,100) < self.aggressive_percent else DefensivePersonality()
+        personality = self.choose_personality()
+        vehicle = self.choose_vehicle_type(position)
+
 
         # small initial push along lane
 
@@ -144,11 +168,13 @@ class TrafficModel(Model):
         if last_agent_in_lane.vehicle.position[1] <= last_agent_in_lane.vehicle.length * min_clear_lengths:
             return True 
         # If last car is moving too slowly, this lane is blocked.
-        if np.linalg.norm(last_agent_in_lane.vehicle.velocity) <= last_agent_in_lane.max_speed * 0.3:
+        if np.linalg.norm(last_agent_in_lane.vehicle.velocity) <= last_agent_in_lane.desired_speed * 0.3:
             return True  # Try next lane
         if(self.is_collision_ahead(last_agent_in_lane)):
             return True 
         return False
+    
+
 
     def try_to_spawn_agent(self, available_lanes:list[int]):
         random.shuffle(available_lanes)

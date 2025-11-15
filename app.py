@@ -54,6 +54,18 @@ def init_simulation(sim_type):
         logger = Logger( logging_dt, is_logging )
 
         aggressive_pct = float(request.args.get('aggressive_pct', 30))
+        defensive_pct = float(request.args.get('defensive_pct', 70))
+        truck_ratio = float(request.args.get('truck_ratio', 0))
+        motorcycle_ratio = float(request.args.get('motorcycle_ratio', 0))
+        suv_ratio = float(request.args.get('suv_ratio', 100))   
+        percents_and_ratios = {
+            'aggressive_percent': aggressive_pct,
+            'defensive_percent': defensive_pct,
+            'truck_ratio': truck_ratio,
+            'motorcycle_ratio': motorcycle_ratio,
+            'suv_ratio': suv_ratio
+        }
+        
         agent_rate = float(request.args.get('agent_rate', 0.5))
 
         generate_agents = True
@@ -61,7 +73,7 @@ def init_simulation(sim_type):
         highway_width = highway_lanes * lane_size * 1.01 # 1.01 due to index out of bounds exceptions
  
         highway = Highway(highway_width, highway_length, highway_lanes, lane_size)
-        simulation_model = TrafficModel(n_agents,1, dt, highway, generate_agents, agent_rate, aggressive_pct)
+        simulation_model = TrafficModel(n_agents,1, dt, highway, generate_agents, agent_rate, percents_and_ratios)
         simulation_type = 'traffic'
 
         return jsonify({

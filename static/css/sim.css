@@ -324,15 +324,110 @@ input[type="range"] {
   background: #5563d4;
 }
 
-
 /* Hide number input arrows (Chrome, Safari, Edge, Opera) */
-input[type=number]::-webkit-inner-spin-button,
-input[type=number]::-webkit-outer-spin-button {
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
 /* Hide number input arrows (Firefox) */
-input[type=number] {
+input[type="number"] {
   -moz-appearance: textfield;
+}
+
+/* Vehicle ratio layout */
+.split-group {
+  margin-top: 14px;
+}
+
+/* 2x3 grid: first row labels, second row inputs within each column */
+.vehicle-ratios-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.vehicle-ratio-item {
+  display: grid;
+  grid-template-rows: auto auto; /* label above, input below */
+  gap: 6px;
+  align-items: start;
+}
+
+.vehicle-ratio-label {
+  font-weight: 600;
+  text-align: center; /* optional: center the titles */
+}
+
+.vehicle-ratio-input {
+  width: 100%;
+  max-width: 140px; /* keeps inputs neat */
+  justify-self: center; /* centers input under the title */
+}
+
+.vehicle-ratio-summary {
+  grid-column: 1 / -1; /* summary spans all 3 columns */
+  margin-top: 6px;
+  font-size: 12px;
+  color: #555;
+}
+
+/* Responsive tweak for very narrow screens */
+@media (max-width: 520px) {
+  .vehicle-ratios-row {
+    grid-template-columns: 1fr 1fr; /* stack into two columns if cramped */
+  }
+  .vehicle-ratio-summary {
+    grid-column: 1 / -1;
+  }
+}
+/* Driver behavior layout (side-by-side) */
+.behavior-grid {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  align-items: flex-end; /* align inputs along baseline */
+  justify-content: space-between; /* spread evenly */
+}
+
+.behavior-col {
+  display: flex;
+  flex-direction: column; /* label above, input below */
+  gap: 6px;
+  flex: 1 1 0; /* allow both columns to share width */
+  min-width: 0;
+}
+
+.behavior-label {
+  font-weight: 600;
+  text-align: center;
+}
+
+.behavior-input {
+  width: 100%;
+  max-width: 120px; /* keep inputs compact */
+  margin: 0 auto; /* center input under its label */
+}
+
+.behavior-slider {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.behavior-summary {
+  font-size: 12px;
+  color: #555;
+  text-align: left;
+}
+
+/* If the card gets very narrow, stack columns */
+@media (max-width: 520px) {
+  .behavior-grid {
+    flex-direction: column;
+    align-items: center;
+  }
+  .behavior-input {
+    max-width: 160px;
+  }
 }
