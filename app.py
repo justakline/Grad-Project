@@ -33,8 +33,8 @@ logger = None
 def index():
     return render_template('index.html')
 
-@app.route('/api/init/<sim_type>')
-def init_simulation(sim_type):
+@app.route('/api/init')
+def init_simulation():
     global simulation_model, simulation_type, logger, logging_dt
     try:
     
