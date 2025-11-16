@@ -1,0 +1,209 @@
+/* Settings floating card container */
+.settings {
+  position: relative;
+  display: inline-block;
+}
+
+/* Settings toggle button */
+#toggleSettingsBtn {
+  background: #667eea;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+#toggleSettingsBtn:hover {
+  background: #5563d4;
+}
+
+/* Card */
+.settings-panel {
+  position: absolute;
+  top: 120%;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  z-index: 100;
+  background: #f8f9fa;
+  border: 1px solid #e1e5ea;
+  border-radius: 10px;
+  padding: 14px 18px;
+  width: 280px;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+/* Arrow tip */
+.settings-panel::before {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 8px solid #e1e5ea;
+}
+.settings-panel::after {
+  content: "";
+  position: absolute;
+  top: -7px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 7px solid #f8f9fa;
+}
+
+/* Visible state */
+.settings-panel.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Initial hidden state */
+.settings-panel.hidden {
+  display: none;
+}
+
+/* Inputs inside the card */
+.settings-panel label {
+  display: block;
+  font-weight: 600;
+  margin-top: 8px;
+  color: #333;
+}
+.settings-panel input[type="number"],
+.settings-panel input[type="range"] {
+  width: 100%;
+  margin-top: 3px;
+}
+.settings-panel button {
+  margin-top: 12px;
+  width: 100%;
+  background: #667eea;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.2s ease;
+}
+.settings-panel button:hover {
+  background: #5563d4;
+}
+
+/* Hide number input arrows (Chrome, Safari, Edge, Opera) */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Hide number input arrows (Firefox) */
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Vehicle ratio layout */
+.split-group {
+  margin-top: 14px;
+}
+
+/* 2x3 grid: first row labels, second row inputs within each column */
+.vehicle-ratios-row {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.vehicle-ratio-item {
+  display: grid;
+  grid-template-rows: auto auto; /* label above, input below */
+  gap: 6px;
+  align-items: start;
+}
+
+.vehicle-ratio-label {
+  font-weight: 600;
+  text-align: center;
+}
+
+.vehicle-ratio-input {
+  width: 100%;
+  max-width: 140px;
+  justify-self: center;
+}
+
+.vehicle-ratio-summary {
+  grid-column: 1 / -1;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #555;
+}
+
+/* Responsive tweak for very narrow screens */
+@media (max-width: 520px) {
+  .vehicle-ratios-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .vehicle-ratio-summary {
+    grid-column: 1 / -1;
+  }
+}
+
+/* Driver behavior layout (side-by-side) */
+.behavior-grid {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  align-items: flex-end;
+  justify-content: space-between;
+}
+
+.behavior-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.behavior-label {
+  font-weight: 600;
+  text-align: center;
+}
+
+.behavior-input {
+  width: 100%;
+  max-width: 120px;
+  margin: 0 auto;
+}
+
+.behavior-slider {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.behavior-summary {
+  font-size: 12px;
+  color: #555;
+  text-align: left;
+}
+
+/* If the card gets very narrow, stack columns */
+@media (max-width: 520px) {
+  .behavior-grid {
+    flex-direction: column;
+    align-items: center;
+  }
+  .behavior-input {
+    max-width: 160px;
+  }
+}
