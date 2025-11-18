@@ -1,5 +1,10 @@
 from abc import ABC
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ..VehicleTypes.AbstractVehicle import AbstractVehicle
+
+
 class AbstractPersonality(ABC):
 
     # dynamics and sensing (mm, ms)
@@ -17,10 +22,10 @@ class AbstractPersonality(ABC):
     desired_time_headway: float
     b_max: float
     desired_gap: float
+    vehicle: "AbstractVehicle"
+
 
     # control params
-    # This value was 3.00, which is 3000 m/s^2. Assuming it's unused or a typo. Commenting out for safety.
-    # self.acceleration_increase = 3.00  # mm/ms^2
     smallest_follow_distance: float
 
     # Lane change parameters

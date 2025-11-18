@@ -7,13 +7,13 @@ from typing import List
 class Highway(ContinuousSpace):
 
 
-    def __init__(self, x_max: int, y_max: int, lane_count: int, lane_width: int):
+    def __init__(self, x_max: float, y_max: float, lane_count: int, lane_width: float)-> None: 
         super().__init__(x_max, y_max, False)
 
-        self.x_max: int = int(x_max)
-        self.y_max: int = int(y_max)
-        self.lane_count: int = int(lane_count)
-        self.lane_width: float = float(lane_width)
+        self.x_max: float = x_max
+        self.y_max: float = y_max
+        self.lane_count: int = lane_count
+        self.lane_width: float = lane_width
 
         total_lane_w = self.lane_count * self.lane_width
 

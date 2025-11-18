@@ -1,12 +1,12 @@
 import numpy as np
-from .AbstractLaneChange import AbstractLaneChange
+from .AbstractLaneChangeState import AbstractLaneChangeState
 from ..Utils import to_unit
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..TrafficAgent import TrafficAgent
 
-class LaneChangeStrategy(AbstractLaneChange):
+class LaneChangeStrategy(AbstractLaneChangeState):
     """
     Executes the physical lane change over a set duration.
     """

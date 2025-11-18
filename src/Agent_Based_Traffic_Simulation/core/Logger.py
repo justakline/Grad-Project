@@ -5,7 +5,7 @@ import datetime
 from .TrafficModel import TrafficModel
 
 class Logger:
-    def __init__(self, interval_ms: int, is_logging: bool = True):
+    def __init__(self, interval_ms: int, is_logging: bool = True, agent_log_name: str = None, collisions_log_name: str = None):
         """
         Parameters
         ----------
@@ -15,15 +15,15 @@ class Logger:
 
         if not os.path.exists('logs'):
             os.makedirs('logs')
-        self.agent_file_name = f"logs/traffic_agent_log_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
-        self.collsions_file_name = f"logs/collisions_log_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv"
+        self.agent_file_name = f"logs/traffic_agent_log_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv" if not agent_log_name else agent_log_name
+        self.collsions_file_name = f"logs/collisions_log_{datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')}.csv" if not collisions_log_name else collisions_log_name
         self.interval_ms = interval_ms
         self.last_log_time = 0
         self.is_logging = is_logging
         self.is_files_created = False
 
         
-
+ 
     def log_all(self, model):
 
         if(not self.is_logging):
