@@ -1,6 +1,7 @@
 import csv
 import os
 import datetime
+import numpy as np
 
 from .TrafficModel import TrafficModel
 
@@ -84,16 +85,15 @@ class Logger:
                 if agent_id is None:
                     agent_id = id(agent)
                 pos = agent.vehicle.position
-                vel = agent.vehicle.velocity
-                acc = agent.vehicle.acceleration
+                vel = float(np.linalg.norm(agent.vehicle.velocity))
+                acc = float(np.dot(agent.vehicle.acceleration, agent.vehicle.velocity / (np.linalg.norm(agent.vehicle.velocity) + 1e-9)))
                 writer.writerow([
                     current_time,              # timestamp in ms
                     agent_id,
                     agent.current_lane,
                     agent.lane_intent,
                     float(pos[0]), float(pos[1]),
-                    float(vel[0]), float(vel[1]),
-                    float(acc[0]), float(acc[1]),
+                    vel, acc,
                     agent.desired_speed,
                     agent.max_speed,
                     type(agent.current_drive_strategy).__name__,
@@ -106,8 +106,7 @@ class Logger:
             writer = csv.writer(f)
             writer.writerow([
                 'timestamp_ms', 'agent_id', 'current_lane', 'lane_intent',
-                'x_mm', 'y_mm', 'vx_mm_per_ms', 'vy_mm_per_ms',
-                'ax_mm_per_ms2', 'ay_mm_per_ms2',
+                'x_mm', 'y_mm', 'speed', 'acceleration',
                 'desired_speed', 'max_speed', 'drive_strategy', 'vehicle_type'
             ])
         # Create raw collisions file and its columns... do not need many colums because we can cross reference with raw agent file
