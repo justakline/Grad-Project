@@ -2,16 +2,19 @@ import numpy as np
 from .AbstractDriveStrategy import AbstractDriveStrategy
 from ..Utils import to_unit, change_magnitude,  EPS
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ..TrafficAgent import TrafficAgent
 
 # The idea of cruising is trying to get back to your "desired cruising speed and stay there"
 class CruiseStrategy(AbstractDriveStrategy):
-    name = 'cruise'
+    name:str = 'cruise'
 
 
     # def step(self, traffic_agent):
     #     traffic_agent.vehicle.setAcceleration(np.array([0,0]))
 
-    def step(self, traffic_agent):
+    def step(self, traffic_agent: "TrafficAgent"):
         a_cmd = self.calculate_accel(traffic_agent)
         direction = to_unit(traffic_agent.vehicle.velocity) if np.linalg.norm(traffic_agent.vehicle.velocity) > EPS else np.array([0., 1.])
         new_acceleration = direction * a_cmd

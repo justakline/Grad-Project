@@ -1,12 +1,17 @@
 import random
 import numpy as np
 from mesa import Model
+
 from .Highway import Highway
-from .TrafficAgent import TrafficAgent
-from .Personalities import DefensivePersonality, AggressivePersonality
+from .Personalities import DefensivePersonality, AggressivePersonality,AbstractPersonality
 
 from .VehicleTypes import AbstractVehicle, SUV, Truck,  Motorcycle
 
+from typing import TYPE_CHECKING, Type
+
+
+from .TrafficAgent import TrafficAgent
+    
 
 
 class TrafficModel(Model):
@@ -15,34 +20,31 @@ class TrafficModel(Model):
     Agents spawn on lane CENTERS coming from Highway.lanes[*].start_position[0].
     """
 
-    def __init__(self, n_agents: int, seed: int, dt: int, highway: Highway, is_generate_agents:bool = False, agent_rate:float = 0.0, percents_and_ratios:dict = None):
+    def __init__(self, n_agents: int, seed: int, dt: int, highway: Highway, is_generate_agents:bool = False, agent_rate:float = 0.0, percents_and_ratios:dict = None)-> None:
         super().__init__(seed=seed)
-        self.highway = highway
-        self.steps = 0
-        self.dt = dt
-        self.total_time = 0
-        self.last_generated_agent_time = 0
-        self.is_generate_agents = is_generate_agents
-        self.agent_rate = agent_rate # -> Agents per second
+        self.highway:Highway = highway
+        self.steps: int = 0
+        self.dt: int = dt
+        self.total_time: int = 0
+        self.last_generated_agent_time: int = 0
+        self.is_generate_agents: bool = is_generate_agents
+        self.agent_rate: float = agent_rate # -> Agents per second
         # self.aggressive_percent = aggressive_pct
-        self.percents_and_ratios = percents_and_ratios
+        self.percents_and_ratios:dict = percents_and_ratios
 
 
         # Congestion management
-        self.is_in_cooldown = False
-        self.cooldown_timer = 0.0
-        self.initial_accelerate_time = 500 #ms
-        self.last_in_lane =[None for _ in range(self.highway.lane_count)]
+        self.initial_accelerate_time:int = 500 #ms
+        self.last_in_lane:list[TrafficAgent] =[None for _ in range(self.highway.lane_count)]
         
         default_velocity = random.uniform(25, 30) 
         # default_velocity = random.uniform(25, 30) 
         agent = self.create_agent(0, default_velocity)
 
-        self.last_in_lane[0] = agent
+        self.last_in_lane[0]: TrafficAgent = agent # type: ignore
         self.highway.place_agent(agent, tuple(agent.vehicle.position))
         self.agents.add(agent)
-        self.top_agent = agent
-        self.last_agent = agent
+        self.last_agent: TrafficAgent = agent
 
         if(n_agents == 0):
             return
@@ -52,7 +54,7 @@ class TrafficModel(Model):
 
             agent = self.create_agent(lane_intent, default_velocity)
             # Spawn on lane center X
-            start_position = self._find_clear_spawn(
+            start_position = self.find_clear_spawn(
                 lane_idx=lane_intent,
                 vehicle_length_mm=agent.vehicle.length,
                 tries=150
@@ -82,7 +84,7 @@ class TrafficModel(Model):
 
 
 
-    def step(self):
+    def step(self)->None:
         self.agents.do("step")
         self.steps += 1
         self.total_time +=self.dt
@@ -101,13 +103,8 @@ class TrafficModel(Model):
                 available_lanes = [i for i in range(self.highway.lane_count) if i != self.last_agent.current_lane]
                 self.try_to_spawn_agent(available_lanes)
 
-        if len(self.agents) > 0:
-            # Find the agent with the highest y-position value
-            self.top_agent = max(self.agents, key=lambda agent: agent.pos[1])
-        else:
-            self.top_agent = None
     
-    def remove_out_of_bounds_agents(self):
+    def remove_out_of_bounds_agents(self)-> None:
         agents_to_remove = [agent for agent in self.agents if agent.is_removed]
         for agent in agents_to_remove:
             self.highway.remove_agent(agent)
@@ -116,12 +113,12 @@ class TrafficModel(Model):
             if self.last_in_lane[agent.current_lane] == agent:
                 self.last_in_lane[agent.current_lane] = None
                 
-    def choose_personality(self):
+    def choose_personality(self)-> AbstractPersonality:
         if random.randint(0,100) < self.percents_and_ratios['aggressive_percent']  :
             return AggressivePersonality()
         return DefensivePersonality()
 
-    def choose_vehicle_type(self, position):
+    def choose_vehicle_type(self, position)-> AbstractVehicle:
         # Since truck + motorcycle + suv = 100, then i could say anything between 0 - truck is truck, anything between truck and truck + motorcylce = motorcycle
         total = float(self.percents_and_ratios['truck_ratio'] + self.percents_and_ratios['motorcycle_ratio'] + self.percents_and_ratios['suv_ratio'])
         truck_percent = self.percents_and_ratios['truck_ratio']/total
@@ -135,7 +132,7 @@ class TrafficModel(Model):
         return SUV(position)
 
 
-    def create_agent(self, lane_idx: int, new_velocity: float=0):
+    def create_agent(self, lane_idx: int, new_velocity: float=0) -> "TrafficAgent":
 
         lane = self.highway.lanes[lane_idx]
 
@@ -159,21 +156,8 @@ class TrafficModel(Model):
                             
                     )
    
-    # def is_too_dangerous_to_spawn(self, last_agent_in_lane: TrafficAgent) -> bool:
-    #     # There is no car in the lane so all good
-    #     min_clear_lengths = 4
-    #     if not last_agent_in_lane:
-    #         return False
-    #     # If last car is too close to the start, this lane is blocked.
-    #     if last_agent_in_lane.vehicle.position[1] <= last_agent_in_lane.vehicle.length * min_clear_lengths:
-    #         return True 
-    #     # If last car is moving too slowly, this lane is blocked.
-    #     if np.linalg.norm(last_agent_in_lane.vehicle.velocity) <= last_agent_in_lane.desired_speed * 0.3:
-    #         return True  # Try next lane
-    #     if(self.is_collision_ahead(last_agent_in_lane)):
-    #         return True 
-    #     return False
-    def is_too_dangerous_to_spawn(self, last_agent_in_lane: TrafficAgent) -> bool:
+
+    def is_too_dangerous_to_spawn(self, last_agent_in_lane: "TrafficAgent") -> bool:
         """
         Light gate: we only block if the last agent is extremely close to the start
         OR almost stopped and very close, which would cause immediate overlap.
@@ -227,7 +211,7 @@ class TrafficModel(Model):
 
             break # Exit the loop since we successfully spawned an agent.
 
-    def is_collision_ahead(self, agent: TrafficAgent) -> bool:
+    def is_collision_ahead(self, agent: "TrafficAgent") -> bool:
         """
         Checks if any pair of agents in the local vicinity of the given 'agent'
         is currently colliding.
@@ -247,7 +231,7 @@ class TrafficModel(Model):
                    return True
         return False  # No collisions detected among any pair.
 
-    def is_collision(self, agent_a, agent_b):
+    def is_collision(self, agent_a:"TrafficAgent", agent_b:"TrafficAgent"):
         """
         Checks if two rectangular vehicles (agent_a, agent_b) collide.
         Handles rotated rectangles using Separating Axis Theorem (SAT). AI Generateed, I dont understand this
@@ -308,7 +292,7 @@ class TrafficModel(Model):
 
         return True  # No separating axis found → collision
 
-    def _find_clear_spawn(self, lane_idx: int, vehicle_length_mm: float, tries: int = 50):
+    def find_clear_spawn(self, lane_idx: int, vehicle_length_mm: float, tries: int = 50) -> np.array:
         """
         Pick a start position on lane `lane_idx` with no nearby agents.
         Uses Mesa get_neighbors so we avoid overlaps at t=0.

@@ -3,11 +3,14 @@ import numpy as np
 from ..Utils import to_unit, change_magnitude, EPS
 from .AbstractDriveStrategy import AbstractDriveStrategy
 
-
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ..TrafficAgent import TrafficAgent
+    
 class AccelerateStrategy(AbstractDriveStrategy):
-    name = "accelerate"
+    name:str = "accelerate"
 
-    def step(self, traffic_agent):
+    def step(self, traffic_agent: "TrafficAgent"):
         a_cmd = self.calculate_accel(traffic_agent)
         #Variabilitiy
 
@@ -34,6 +37,7 @@ class AccelerateStrategy(AbstractDriveStrategy):
         # No backwards movement when at a standstill
         if current_speed < EPS and acceleration_clipped < 0:
             acceleration_clipped = 0.0
+        
         
 
         return float(acceleration_clipped)

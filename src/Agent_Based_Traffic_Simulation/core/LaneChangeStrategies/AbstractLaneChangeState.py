@@ -1,6 +1,6 @@
 
 from ..Highway import Highway
-from ..TrafficAgent import TrafficAgent
+
 from ..DriveStrategies.AbstractState import AbstractState
 
 
@@ -9,6 +9,6 @@ if TYPE_CHECKING:
     from ..TrafficAgent import TrafficAgent
 
 
-class AbstractLaneChange(AbstractState):
-    def step(self, traffic_agent: TrafficAgent):
+class AbstractLaneChangeState(AbstractState):
+    def step(self, traffic_agent: "TrafficAgent"):
         pass

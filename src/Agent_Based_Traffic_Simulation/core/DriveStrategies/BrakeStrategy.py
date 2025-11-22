@@ -2,11 +2,14 @@ import numpy as np
 from .AbstractDriveStrategy import AbstractDriveStrategy
 from ..Utils import change_magnitude, EPS, to_unit
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from ..TrafficAgent import TrafficAgent
 class BrakeStrategy(AbstractDriveStrategy):
-    name = "brake"
+    name:str = "brake"
     
 
-    def step(self, traffic_agent):
+    def step(self, traffic_agent: "TrafficAgent"):
         """
         Implements braking behavior based on the Intelligent Driver Model (IDM).
         The acceleration is calculated to safely reduce speed and avoid collision.

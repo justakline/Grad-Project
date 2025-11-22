@@ -11,6 +11,7 @@ from mesa import Agent
 # from Agent_Based_Traffic_Simulation.core.DriveStrategies import AbstractDriveStrategy
 from . import TrafficModel
 from .VehicleTypes import AbstractVehicle, SUV, Truck,  Motorcycle
+from .LaneChangeStrategies import AbstractLaneChangeState
 
 if TYPE_CHECKING:
     from .DriveStrategies.AbstractDriveStrategy import AbstractDriveStrategy
@@ -19,54 +20,53 @@ if TYPE_CHECKING:
 class TrafficAgent(Agent):
     model: TrafficModel
 
-    def __init__(self, model: TrafficModel, goal: np.ndarray, lane_intent: int, spawn_time, vehicle: AbstractVehicle, 
+    def __init__(self, model: TrafficModel, goal: np.ndarray, lane_intent: int, spawn_time:int, vehicle: AbstractVehicle, 
                  personality: AbstractPersonality = DefensivePersonality(), velocity = 0):
         super().__init__(model)
-        dt = model.dt
 
         self.vehicle: AbstractVehicle = vehicle
         self.goal: np.ndarray = goal
-        self.lane_intent = lane_intent
-        self.current_lane = lane_intent
-        self.spawn_time = spawn_time
+        self.lane_intent:int = lane_intent
+        self.current_lane:int = lane_intent
+        self.spawn_time:int = spawn_time
 
-        self.is_removed = False
+        self.is_removed:bool = False
 
         # --- Personality ---
-        self.personality = personality
-        self.personality.vehicle = self.vehicle # Give personality access to vehicle properties
+        self.personality:AbstractPersonality = personality
+        # self.personality.vehicle = self.vehicle # Give personality access to vehicle properties
 
-        self.max_speed = personality.max_speed
-        self.desired_speed = personality.desired_speed
-        self.sensing_distance = personality.sensing_distance
-        self.max_acceleration = personality.max_acceleration
-        self.cruise_gain = personality.cruise_gain
-        self.braking_comfortable = personality.braking_comfortable
-        self.b_max = personality.b_max
-        self.desired_time_headway = personality.desired_time_headway
-        self.smallest_follow_distance = self.vehicle.length * self.personality.smallest_follow_distance_factor
-        self.desired_gap = self.vehicle.length * self.personality.desired_gap_factor
-        self.politeness_factor = personality.politeness_factor
-        self.lane_change_threshold = personality.lane_change_threshold
-        self.decision_time = personality.decision_time
+        self.max_speed:float = personality.max_speed
+        self.desired_speed:float = personality.desired_speed
+        self.sensing_distance:float = personality.sensing_distance
+        self.max_acceleration:float = personality.max_acceleration
+        self.cruise_gain:float = personality.cruise_gain
+        self.braking_comfortable: float = personality.braking_comfortable
+        self.b_max:float = personality.b_max
+        self.desired_time_headway:float = personality.desired_time_headway
+        self.smallest_follow_distance:float = self.vehicle.length * self.personality.smallest_follow_distance_factor
+        self.desired_gap:float = self.vehicle.length * self.personality.desired_gap_factor
+        self.politeness_factor:float = personality.politeness_factor
+        self.lane_change_threshold:float = personality.lane_change_threshold
+        self.decision_time:int = personality.decision_time
      
 
         # strategies
         from .DriveStrategies.CruiseStrategy import CruiseStrategy
         from .LaneChangeStrategies.LaneStayStrategy import LaneStayStrategy
 
-        self.previous_drive_strategy = CruiseStrategy()
-        self.current_drive_strategy = CruiseStrategy()
-        self.lane_change_strategy = LaneStayStrategy()
+        self.previous_drive_strategy: AbstractDriveStrategy = CruiseStrategy()
+        self.current_drive_strategy:AbstractDriveStrategy = CruiseStrategy()
+        self.lane_change_strategy: AbstractLaneChangeState = LaneStayStrategy()
 
         # tracking
-        self.lead = None
-        self.direction = None
-        self.gap_to_lead = None  # center-to-center, longitudinal mm
+        self.lead: TrafficAgent = None
+        self.direction: np.ndarray = None
+        self.gap_to_lead:float = None  # center-to-center, longitudinal mm
 
         # decision cadence
-        self.internal_timer = self.decision_time
-        self.initial_lane_x = self.vehicle.position[0]
+        self.internal_timer:int = self.decision_time
+        self.initial_lane_x: float = self.vehicle.position[0]
 
         # small initial push along lane
         if(velocity == 0 ):
@@ -92,6 +92,10 @@ class TrafficAgent(Agent):
         # Make sure the vehicle does not go backwards, some boundary physics night allow that to happen
         if (np.linalg.norm(self.vehicle.velocity < 0)):
             self.vehicle.velocity[1] = max(0, self.vehicle.velocity[1])
+
+        if(np.linalg.norm(self.vehicle.velocity) > self.max_speed):
+            self.vehicle.velocity = to_unit(self.vehicle.velocity) * self.max_speed
+
         self.vehicle.position += self.vehicle.velocity * dt
 
         # Check for out of bounds and remove 
