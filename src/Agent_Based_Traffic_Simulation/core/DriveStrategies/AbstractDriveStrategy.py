@@ -12,3 +12,5 @@ class AbstractDriveStrategy(AbstractState):
 
     def step(self, traffic_agent: "TrafficAgent"):
         pass
+    def calculate_accel(self, traffic_agent) -> float:
+        pass
